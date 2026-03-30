@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "build": "npx tsc && npx vite build",
     "lint": "tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest run"
@@ -29,4 +30,3 @@
     "vitest": "^4.1.0"
   }
 }
-
