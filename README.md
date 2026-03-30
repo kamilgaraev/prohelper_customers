@@ -18,9 +18,8 @@ Workflow: `.github/workflows/deploy.yml`
 Required repository secrets:
 
 - `DEPLOY_HOST`
-- `DEPLOY_USER`
 - `DEPLOY_SSH_KEY`
 - `DEPLOY_PATH`
 - `DEPLOY_POST_COMMAND`
 
-SSH port is fixed to `22` in the workflow.
+SSH user is fixed to `root`, and SSH port is fixed to `22` in the workflow.

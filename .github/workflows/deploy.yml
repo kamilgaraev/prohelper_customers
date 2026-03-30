@@ -46,16 +46,16 @@ jobs:
           EOF
           chmod 600 /tmp/deploy_key
           echo "DEPLOY_HOST=${{ secrets.DEPLOY_HOST }}"
-          echo "DEPLOY_USER=${{ secrets.DEPLOY_USER }}"
+          echo "DEPLOY_USER=root"
           ssh-keygen -lf /tmp/deploy_key
           ssh-keygen -y -f /tmp/deploy_key
-          ssh -o StrictHostKeyChecking=no -i /tmp/deploy_key "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" "echo SSH_OK"
+          ssh -o StrictHostKeyChecking=no -i /tmp/deploy_key "root@${{ secrets.DEPLOY_HOST }}" "echo SSH_OK"
 
       - name: Prepare deploy path
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
+          username: root
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: 22
           script: |
@@ -66,7 +66,7 @@ jobs:
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
+          username: root
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: 22
           source: "dist/*"
@@ -77,7 +77,7 @@ jobs:
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
+          username: root
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: 22
           script: |
