@@ -37,6 +37,20 @@ jobs:
       - name: Build application
         run: npm run build
 
+      - name: Debug deploy credentials
+        shell: bash
+        run: |
+          set -eu
+          cat > /tmp/deploy_key <<'EOF'
+          ${{ secrets.DEPLOY_SSH_KEY }}
+          EOF
+          chmod 600 /tmp/deploy_key
+          echo "DEPLOY_HOST=${{ secrets.DEPLOY_HOST }}"
+          echo "DEPLOY_USER=${{ secrets.DEPLOY_USER }}"
+          ssh-keygen -lf /tmp/deploy_key
+          ssh-keygen -y -f /tmp/deploy_key
+          ssh -o StrictHostKeyChecking=no -i /tmp/deploy_key "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" "echo SSH_OK"
+
       - name: Prepare deploy path
         uses: appleboy/ssh-action@v1.2.0
         with:
