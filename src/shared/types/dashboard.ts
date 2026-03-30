@@ -49,11 +49,13 @@ export interface DocumentItem {
 }
 
 export interface NotificationItem {
-  id: number;
+  id: string;
   title: string;
   description: string;
-  createdAtLabel: string;
+  createdAtLabel: string | null;
   tone: 'primary' | 'neutral' | 'success' | 'warning';
+  statusLabel: string;
+  isUnread: boolean;
 }
 
 export interface SupportRequestPayload {
@@ -62,9 +64,15 @@ export interface SupportRequestPayload {
   phone?: string;
 }
 
-export interface SupportRequestResult {
+export interface SupportRequestItem {
   id: number;
   status: string;
+  statusLabel: string;
   subject: string;
+  message: string;
+  phone: string | null;
   createdAt: string | null;
+  createdAtLabel: string | null;
 }
+
+export type SupportRequestResult = SupportRequestItem;

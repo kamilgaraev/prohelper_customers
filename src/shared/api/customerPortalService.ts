@@ -12,9 +12,11 @@ import {
   NotificationItem,
   ProjectDetails,
   ProjectPreview,
+  SupportRequestItem,
   SupportRequestPayload,
   SupportRequestResult
 } from '@shared/types/dashboard';
+import { PermissionsData } from '@shared/types/permissions';
 
 interface CustomerProfileResponseData {
   user: {
@@ -27,6 +29,12 @@ interface CustomerProfileResponseData {
     roles?: string[];
     interfaces?: string[];
   };
+}
+
+interface CustomerPermissionsResponseData {
+  roles?: string[];
+  permissions_flat?: string[];
+  interfaces?: string[];
 }
 
 function isCustomerRole(role: string): role is CustomerRole {
@@ -171,6 +179,28 @@ export const customerPortalService = {
     }
   },
 
+  async getPermissions(): Promise<PermissionsData> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<CustomerPermissionsResponseData>>(
+        '/permissions'
+      );
+      const data = extractApiData(response.data);
+      const interfaces = data.interfaces?.length ? [...data.interfaces] : [];
+
+      if (!interfaces.includes('customer')) {
+        interfaces.push('customer');
+      }
+
+      return {
+        permissionsFlat: data.permissions_flat ?? [],
+        roles: data.roles ?? [],
+        interfaces: Array.from(new Set(interfaces))
+      };
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить права доступа'));
+    }
+  },
+
   async getProfile(): Promise<CustomerUser> {
     try {
       const response = await customerApi.get<ApiEnvelope<CustomerProfileResponseData>>('/profile');
@@ -190,6 +220,15 @@ export const customerPortalService = {
       return extractApiData(response.data).request;
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось отправить обращение'));
+    }
+  },
+
+  async getSupportRequests(): Promise<SupportRequestItem[]> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<{ items: SupportRequestItem[] }>>('/support');
+      return extractApiData(response.data).items;
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить историю обращений'));
     }
   }
 };

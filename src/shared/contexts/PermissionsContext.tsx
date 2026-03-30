@@ -1,5 +1,6 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 
+import { customerPortalService } from '@shared/api/customerPortalService';
 import { useAuth } from '@shared/contexts/AuthContext';
 import { AccessOptions, PermissionsData } from '@shared/types/permissions';
 
@@ -8,17 +9,6 @@ interface PermissionsContextValue {
   isLoaded: boolean;
   canAccess: (options: AccessOptions) => boolean;
 }
-
-const staticCustomerPermissions: string[] = [
-  'customer.dashboard.view',
-  'customer.projects.view',
-  'customer.documents.view',
-  'customer.approvals.manage',
-  'customer.conversations.view',
-  'customer.notifications.view',
-  'customer.support.manage',
-  'customer.profile.edit'
-];
 
 const emptyPermissions: PermissionsData = {
   permissionsFlat: [],
@@ -40,12 +30,43 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setPermissions({
-      permissionsFlat: staticCustomerPermissions,
-      roles: user.roles?.length ? user.roles : [user.role],
-      interfaces: user.interfaces
-    });
-    setIsLoaded(true);
+    const currentUser = user;
+    let cancelled = false;
+
+    async function loadPermissions() {
+      setIsLoaded(false);
+
+      try {
+        const nextPermissions = await customerPortalService.getPermissions();
+
+        if (!cancelled) {
+          setPermissions({
+            permissionsFlat: nextPermissions.permissionsFlat,
+            roles: nextPermissions.roles.length ? nextPermissions.roles : currentUser.roles,
+            interfaces:
+              nextPermissions.interfaces.length ? nextPermissions.interfaces : currentUser.interfaces
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          setPermissions({
+            permissionsFlat: [],
+            roles: currentUser.roles?.length ? currentUser.roles : [currentUser.role],
+            interfaces: currentUser.interfaces
+          });
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoaded(true);
+        }
+      }
+    }
+
+    void loadPermissions();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   const value = useMemo<PermissionsContextValue>(

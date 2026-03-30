@@ -586,6 +586,15 @@ p {
   text-align: right;
 }
 
+.support-history-row {
+  align-items: start;
+}
+
+.support-history-copy {
+  display: grid;
+  gap: 0.35rem;
+}
+
 .empty-state {
   padding: 1rem 0;
   color: var(--muted);
