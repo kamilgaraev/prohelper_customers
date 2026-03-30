@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 import { AuthLayout } from '@features/auth/AuthLayout';
 import { useAuth } from '@shared/contexts/AuthContext';
@@ -7,9 +7,9 @@ import { useAuth } from '@shared/contexts/AuthContext';
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isLoading } = useAuth();
-  const [email, setEmail] = useState('customer@prohelper.pro');
-  const [password, setPassword] = useState('password');
+  const { login, isAuthenticated, isLoading } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -25,6 +25,10 @@ export function LoginPage() {
     }
   }
 
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return (
     <AuthLayout
       title="Единый кабинет заказчика"
@@ -38,7 +42,12 @@ export function LoginPage() {
       <form className="auth-form" onSubmit={handleSubmit}>
         <label>
           Email
-          <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" />
+          <input
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            type="email"
+            placeholder="name@company.ru"
+          />
         </label>
         <label>
           Пароль
@@ -46,6 +55,7 @@ export function LoginPage() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             type="password"
+            placeholder="Введите пароль"
           />
         </label>
         {error ? <div className="form-error">{error}</div> : null}
@@ -56,4 +66,3 @@ export function LoginPage() {
     </AuthLayout>
   );
 }
-

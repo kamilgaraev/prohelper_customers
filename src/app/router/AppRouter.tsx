@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { LoginPage } from '@features/auth/LoginPage';
 import { RegisterPage } from '@features/auth/RegisterPage';
+import { VerifyEmailPage } from '@features/auth/VerifyEmailPage';
 import { DashboardPage } from '@features/dashboard/DashboardPage';
 import { ProjectsPage } from '@features/projects/ProjectsPage';
 import { ProjectDetailsPage } from '@features/projects/ProjectDetailsPage';
@@ -20,6 +21,7 @@ export function AppRouter() {
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route
         path="/dashboard"
         element={

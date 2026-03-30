@@ -208,6 +208,17 @@ p {
   color: var(--success);
 }
 
+.auth-link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.95rem 1.3rem;
+  background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+  color: #fff;
+  font-weight: 700;
+}
+
 .customer-shell {
   min-height: 100vh;
   display: grid;

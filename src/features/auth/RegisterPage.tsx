@@ -1,12 +1,12 @@
 import { FormEvent, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 
 import { AuthLayout } from '@features/auth/AuthLayout';
 import { useAuth } from '@shared/contexts/AuthContext';
 
 export function RegisterPage() {
   const navigate = useNavigate();
-  const { register, isLoading } = useAuth();
+  const { register, isAuthenticated, isLoading } = useAuth();
   const [name, setName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
@@ -27,6 +27,10 @@ export function RegisterPage() {
           : 'Не удалось создать customer-профиль'
       );
     }
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return (

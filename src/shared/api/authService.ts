@@ -39,6 +39,16 @@ function resolveCustomerRoles(roles: string[] | undefined): CustomerRole[] {
   return customerRoles.length > 0 ? customerRoles : ['customer_viewer'];
 }
 
+function resolveCustomerInterfaces(interfaces: string[] | undefined): string[] {
+  const values = interfaces?.length ? interfaces : [];
+
+  if (!values.includes('customer')) {
+    values.push('customer');
+  }
+
+  return Array.from(new Set(values));
+}
+
 function buildCustomerUser(profile: CustomerProfileResponseData['user']): CustomerUser {
   const roles = resolveCustomerRoles(profile.roles);
 
@@ -52,7 +62,7 @@ function buildCustomerUser(profile: CustomerProfileResponseData['user']): Custom
     organizationId: profile.organization_id ?? null,
     role: roles[0],
     roles,
-    interfaces: profile.interfaces?.length ? profile.interfaces : ['customer']
+    interfaces: resolveCustomerInterfaces(profile.interfaces)
   };
 }
 
@@ -84,7 +94,7 @@ export const authService = {
   async login(payload: LoginPayload): Promise<AuthSession> {
     try {
       const response = await axios.post<ApiEnvelope<LandingAuthResponseData>>(
-        `${env.landingAuthUrl}/login`,
+        `${env.customerAuthUrl}/login`,
         payload,
         {
           headers: {
@@ -106,7 +116,7 @@ export const authService = {
   async register(payload: RegisterPayload): Promise<AuthSession> {
     try {
       const response = await axios.post<ApiEnvelope<LandingAuthResponseData>>(
-        `${env.landingAuthUrl}/register`,
+        `${env.customerAuthUrl}/register`,
         {
           name: payload.name,
           email: payload.email,
@@ -133,5 +143,25 @@ export const authService = {
 
   logout() {
     clearSession();
+  },
+
+  async verifyEmail(params: { id: string; hash: string; expires?: string | null }) {
+    const query = new URLSearchParams();
+
+    if (params.expires) {
+      query.set('expires', params.expires);
+    }
+
+    const suffix = query.size > 0 ? `?${query.toString()}` : '';
+
+    return axios.get<ApiEnvelope<{ verified: boolean }>>(
+      `${env.customerAuthUrl}/email/verify/${params.id}/${params.hash}${suffix}`,
+      {
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json'
+        }
+      }
+    );
   }
 };

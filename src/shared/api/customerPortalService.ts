@@ -40,6 +40,11 @@ function isCustomerRole(role: string): role is CustomerRole {
 
 function normalizeCustomerUser(profile: CustomerProfileResponseData['user']): CustomerUser {
   const roles = (profile.roles ?? []).filter(isCustomerRole);
+  const interfaces = profile.interfaces?.length ? [...profile.interfaces] : [];
+
+  if (!interfaces.includes('customer')) {
+    interfaces.push('customer');
+  }
 
   return {
     id: profile.id,
@@ -51,7 +56,7 @@ function normalizeCustomerUser(profile: CustomerProfileResponseData['user']): Cu
     organizationId: profile.organization_id ?? null,
     role: roles[0] ?? 'customer_viewer',
     roles: roles.length > 0 ? roles : ['customer_viewer'],
-    interfaces: profile.interfaces?.length ? profile.interfaces : ['customer']
+    interfaces: Array.from(new Set(interfaces))
   };
 }
 
