@@ -1,79 +1,137 @@
 import axios from 'axios';
 
+import { customerApi } from '@shared/api/customerApi';
+import { extractApiData, resolveApiMessage } from '@shared/api/apiHelpers';
 import { clearSession, saveSession } from '@shared/api/storage';
 import { env } from '@shared/config/env';
-import { mockCustomerUser } from '@shared/api/mockData';
-import { AuthSession, LoginPayload, RegisterPayload } from '@shared/types/auth';
+import { ApiEnvelope } from '@shared/types/api';
+import { AuthSession, CustomerRole, CustomerUser, LoginPayload, RegisterPayload } from '@shared/types/auth';
 
-function buildMockSession(name?: string, email?: string): AuthSession {
-  return {
-    token: 'demo-customer-token',
-    user: {
-      ...mockCustomerUser,
-      name: name ?? mockCustomerUser.name,
-      email: email ?? mockCustomerUser.email
-    }
+interface LandingAuthResponseData {
+  token?: string;
+}
+
+interface CustomerProfileResponseData {
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    phone?: string | null;
+    organization_id?: number | null;
+    organization_name?: string | null;
+    roles?: string[];
+    interfaces?: string[];
   };
+}
+
+function isCustomerRole(role: string): role is CustomerRole {
+  return (
+    role === 'customer_owner' ||
+    role === 'customer_manager' ||
+    role === 'customer_approver' ||
+    role === 'customer_viewer'
+  );
+}
+
+function resolveCustomerRoles(roles: string[] | undefined): CustomerRole[] {
+  const customerRoles = (roles ?? []).filter(isCustomerRole);
+
+  return customerRoles.length > 0 ? customerRoles : ['customer_viewer'];
+}
+
+function buildCustomerUser(profile: CustomerProfileResponseData['user']): CustomerUser {
+  const roles = resolveCustomerRoles(profile.roles);
+
+  return {
+    id: profile.id,
+    name: profile.name,
+    email: profile.email,
+    phone: profile.phone ?? null,
+    accountType: 'organization',
+    companyName: profile.organization_name ?? 'Customer account',
+    organizationId: profile.organization_id ?? null,
+    role: roles[0],
+    roles,
+    interfaces: profile.interfaces?.length ? profile.interfaces : ['customer']
+  };
+}
+
+async function fetchCustomerSession(token: string): Promise<AuthSession> {
+  const response = await customerApi.get<ApiEnvelope<CustomerProfileResponseData>>('/profile', {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  const data = extractApiData(response.data);
+
+  return {
+    token,
+    user: buildCustomerUser(data.user)
+  };
+}
+
+function extractLandingToken(payload: ApiEnvelope<LandingAuthResponseData>): string {
+  const data = extractApiData(payload);
+
+  if (!data.token) {
+    throw new Error('Сервер не вернул токен авторизации');
+  }
+
+  return data.token;
 }
 
 export const authService = {
   async login(payload: LoginPayload): Promise<AuthSession> {
     try {
-      const response = await axios.post(`${env.landingAuthUrl}/login`, payload, {
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json'
+      const response = await axios.post<ApiEnvelope<LandingAuthResponseData>>(
+        `${env.landingAuthUrl}/login`,
+        payload,
+        {
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json'
+          }
         }
-      });
-
-      const token = response.data?.data?.token ?? response.data?.token;
-      const user = response.data?.data?.user ?? response.data?.user;
-
-      if (!token || !user) {
-        throw new Error('Неверный формат ответа авторизации');
-      }
-
-      const session: AuthSession = {
-        token,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          accountType: 'organization',
-          companyName: user.organization?.name ?? 'Customer account',
-          role: 'customer_owner',
-          interfaces: ['customer']
-        }
-      };
+      );
+      const session = await fetchCustomerSession(extractLandingToken(response.data));
 
       saveSession(session.token, session.user);
 
       return session;
-    } catch (_error) {
-      const session = buildMockSession(undefined, payload.email);
-      saveSession(session.token, session.user);
-      return session;
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось выполнить вход'));
     }
   },
 
   async register(payload: RegisterPayload): Promise<AuthSession> {
-    const session = buildMockSession(payload.name, payload.email);
-    saveSession(session.token, {
-      ...session.user,
-      companyName: payload.companyName
-    });
+    try {
+      const response = await axios.post<ApiEnvelope<LandingAuthResponseData>>(
+        `${env.landingAuthUrl}/register`,
+        {
+          name: payload.name,
+          email: payload.email,
+          password: payload.password,
+          password_confirmation: payload.password,
+          organization_name: payload.companyName
+        },
+        {
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      const session = await fetchCustomerSession(extractLandingToken(response.data));
 
-    return {
-      ...session,
-      user: {
-        ...session.user,
-        companyName: payload.companyName
-      }
-    };
+      saveSession(session.token, session.user);
+
+      return session;
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось зарегистрировать customer-профиль'));
+    }
   },
 
   logout() {
     clearSession();
   }
 };
-

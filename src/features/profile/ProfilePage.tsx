@@ -1,17 +1,20 @@
-import { useAuth } from '@shared/contexts/AuthContext';
+import { customerPortalService } from '@shared/api/customerPortalService';
+import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
 
 export function ProfilePage() {
-  const { user } = useAuth();
+  const { value: user, error } = useAsyncValue(() => customerPortalService.getProfile(), []);
 
   return (
     <div className="page-stack">
       <SectionHeading
         eyebrow="Profile"
         title="Профиль customer-аккаунта"
-        description="Состав аккаунта, роль текущего пользователя и готовность к подключению backend customer-role модели."
+        description="Состав аккаунта, роли текущего пользователя и интерфейсы, которые доступны в customer-контуре."
       />
+
+      {error ? <div className="form-error">{error}</div> : null}
 
       <section className="dual-columns">
         <article className="plain-panel">
@@ -21,15 +24,19 @@ export function ProfilePage() {
           <div className="profile-list">
             <div>
               <span>Имя</span>
-              <strong>{user?.name}</strong>
+              <strong>{user?.name ?? '—'}</strong>
             </div>
             <div>
               <span>Email</span>
-              <strong>{user?.email}</strong>
+              <strong>{user?.email ?? '—'}</strong>
+            </div>
+            <div>
+              <span>Телефон</span>
+              <strong>{user?.phone ?? 'Не указан'}</strong>
             </div>
             <div>
               <span>Компания</span>
-              <strong>{user?.companyName}</strong>
+              <strong>{user?.companyName ?? '—'}</strong>
             </div>
           </div>
         </article>
@@ -41,15 +48,19 @@ export function ProfilePage() {
           <div className="profile-list">
             <div>
               <span>Тип аккаунта</span>
-              <strong>{user?.accountType}</strong>
+              <strong>{user?.accountType ?? 'organization'}</strong>
             </div>
             <div>
-              <span>Роль</span>
-              <strong>{user?.role}</strong>
+              <span>Главная роль</span>
+              <strong>{user?.role ?? 'customer_viewer'}</strong>
             </div>
             <div>
-              <span>Interface</span>
-              <StatusPill tone="success">customer</StatusPill>
+              <span>Роли</span>
+              <strong>{user?.roles?.join(', ') ?? '—'}</strong>
+            </div>
+            <div>
+              <span>Interfaces</span>
+              <StatusPill tone="success">{user?.interfaces?.join(', ') ?? 'customer'}</StatusPill>
             </div>
           </div>
         </article>
@@ -57,4 +68,3 @@ export function ProfilePage() {
     </div>
   );
 }
-

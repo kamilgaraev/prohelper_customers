@@ -1,11 +1,20 @@
+export type CustomerRole =
+  | 'customer_owner'
+  | 'customer_manager'
+  | 'customer_approver'
+  | 'customer_viewer';
+
 export interface CustomerUser {
   id: number;
   name: string;
   email: string;
   accountType: 'organization' | 'individual';
   companyName: string;
-  role: 'customer_owner' | 'customer_manager' | 'customer_approver' | 'customer_viewer';
+  role: CustomerRole;
+  roles: CustomerRole[];
   interfaces: string[];
+  phone?: string | null;
+  organizationId?: number | null;
 }
 
 export interface LoginPayload {
@@ -24,4 +33,3 @@ export interface AuthSession {
   token: string;
   user: CustomerUser;
 }
-

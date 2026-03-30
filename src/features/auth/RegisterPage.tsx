@@ -11,11 +11,22 @@ export function RegisterPage() {
   const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await register({ name, companyName, email, password });
-    navigate('/dashboard', { replace: true });
+    setError(null);
+
+    try {
+      await register({ name, companyName, email, password });
+      navigate('/dashboard', { replace: true });
+    } catch (registerError) {
+      setError(
+        registerError instanceof Error
+          ? registerError.message
+          : 'Не удалось создать customer-профиль'
+      );
+    }
   }
 
   return (
@@ -53,6 +64,7 @@ export function RegisterPage() {
             type="password"
           />
         </label>
+        {error ? <div className="form-error">{error}</div> : null}
         <button type="submit" disabled={isLoading}>
           {isLoading ? 'Создаём...' : 'Создать кабинет'}
         </button>
@@ -60,4 +72,3 @@ export function RegisterPage() {
     </AuthLayout>
   );
 }
-

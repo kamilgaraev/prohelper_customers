@@ -10,4 +10,8 @@ describe('customer interface bootstrap', () => {
   it('keeps customer role namespaced', () => {
     expect(mockCustomerUser.role.startsWith('customer_')).toBe(true);
   });
+
+  it('stores explicit customer roles list', () => {
+    expect(mockCustomerUser.roles).toContain('customer_owner');
+  });
 });

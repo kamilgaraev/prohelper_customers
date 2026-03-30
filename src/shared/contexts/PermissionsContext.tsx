@@ -9,39 +9,41 @@ interface PermissionsContextValue {
   canAccess: (options: AccessOptions) => boolean;
 }
 
-const fallbackPermissions: PermissionsData = {
-  permissionsFlat: [
-    'customer.dashboard.view',
-    'customer.projects.view',
-    'customer.documents.view',
-    'customer.approvals.manage',
-    'customer.conversations.view',
-    'customer.notifications.view',
-    'customer.support.manage',
-    'customer.profile.edit'
-  ],
-  roles: ['customer_owner'],
-  interfaces: ['customer']
+const staticCustomerPermissions: string[] = [
+  'customer.dashboard.view',
+  'customer.projects.view',
+  'customer.documents.view',
+  'customer.approvals.manage',
+  'customer.conversations.view',
+  'customer.notifications.view',
+  'customer.support.manage',
+  'customer.profile.edit'
+];
+
+const emptyPermissions: PermissionsData = {
+  permissionsFlat: [],
+  roles: [],
+  interfaces: []
 };
 
 const PermissionsContext = createContext<PermissionsContextValue | undefined>(undefined);
 
 export function PermissionsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const [permissions, setPermissions] = useState<PermissionsData>(fallbackPermissions);
+  const [permissions, setPermissions] = useState<PermissionsData>(emptyPermissions);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     if (!user) {
-      setPermissions(fallbackPermissions);
+      setPermissions(emptyPermissions);
       setIsLoaded(true);
       return;
     }
 
     setPermissions({
-      permissionsFlat: fallbackPermissions.permissionsFlat,
-      roles: [user.role],
-      interfaces: user.interfaces.includes('customer') ? user.interfaces : ['customer']
+      permissionsFlat: staticCustomerPermissions,
+      roles: user.roles?.length ? user.roles : [user.role],
+      interfaces: user.interfaces
     });
     setIsLoaded(true);
   }, [user]);
@@ -87,4 +89,3 @@ export function usePermissions() {
 
   return context;
 }
-

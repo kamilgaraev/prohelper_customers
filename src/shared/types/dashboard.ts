@@ -14,6 +14,13 @@ export interface ProjectPreview {
   leadLabel: string;
 }
 
+export interface ProjectDetails extends ProjectPreview {
+  status: string | null;
+  description: string | null;
+  startDate: string | null;
+  endDate: string | null;
+}
+
 export interface ApprovalItem {
   id: number;
   title: string;
@@ -30,3 +37,34 @@ export interface ConversationItem {
   unreadCount: number;
 }
 
+export interface DocumentItem {
+  id: number;
+  title: string;
+  projectName: string | null;
+  uploadedAtLabel: string | null;
+  type: string | null;
+  category: string | null;
+  size: number | null;
+  path: string | null;
+}
+
+export interface NotificationItem {
+  id: number;
+  title: string;
+  description: string;
+  createdAtLabel: string;
+  tone: 'primary' | 'neutral' | 'success' | 'warning';
+}
+
+export interface SupportRequestPayload {
+  subject: string;
+  message: string;
+  phone?: string;
+}
+
+export interface SupportRequestResult {
+  id: number;
+  status: string;
+  subject: string;
+  createdAt: string | null;
+}

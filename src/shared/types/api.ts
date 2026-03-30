@@ -4,3 +4,8 @@ export interface ApiEnvelope<T> {
   message?: string;
 }
 
+export interface ApiErrorEnvelope {
+  success: boolean;
+  message?: string;
+  errors?: Record<string, string[]>;
+}
