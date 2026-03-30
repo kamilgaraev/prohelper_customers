@@ -1,0 +1,32 @@
+{
+  "name": "prohelper_customers",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "lint": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "dependencies": {
+    "axios": "^1.9.0",
+    "framer-motion": "^12.9.4",
+    "lucide-react": "^0.554.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^6.23.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@types/node": "^22.15.3",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.3",
+    "@vitejs/plugin-react": "^4.4.0",
+    "jsdom": "^27.0.1",
+    "typescript": "^5.8.3",
+    "vite": "^5.3.1",
+    "vitest": "^4.1.0"
+  }
+}
+
