@@ -19,7 +19,8 @@ Required repository secrets:
 
 - `DEPLOY_HOST`
 - `DEPLOY_USER`
-- `DEPLOY_PORT`
 - `DEPLOY_SSH_KEY`
 - `DEPLOY_PATH`
 - `DEPLOY_POST_COMMAND`
+
+SSH port is fixed to `22` in the workflow.
