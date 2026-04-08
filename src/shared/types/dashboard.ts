@@ -21,10 +21,48 @@ export interface ProjectDetails extends ProjectPreview {
   endDate: string | null;
 }
 
+export interface CustomerContractParty {
+  id: number;
+  name: string;
+}
+
+export interface CustomerResolvedCustomer extends CustomerContractParty {
+  source?: 'project_participant' | 'project_owner';
+}
+
+export interface CustomerContractItem {
+  id: number;
+  number: string;
+  subject: string | null;
+  status: string;
+  status_label?: string | null;
+  project: {
+    id: number;
+    name: string;
+    location?: string | null;
+  } | null;
+  projects?: Array<{
+    id: number;
+    name: string;
+  }>;
+  contractor: CustomerContractParty | null;
+  date: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  total_amount: number | null;
+  performed_amount: number;
+  paid_amount: number;
+  remaining_amount: number | null;
+  is_self_execution: boolean;
+  contract_category: string | null;
+  customer: CustomerResolvedCustomer | null;
+}
+
 export interface ApprovalItem {
   id: number;
   title: string;
   projectName: string;
+  contractId?: number | null;
   deadlineLabel: string;
   status: 'pending' | 'changes_requested' | 'approved';
 }

@@ -1,4 +1,4 @@
-import { Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router-dom';
 
 import { customerPortalService } from '@shared/api/customerPortalService';
 import { useAsyncValue } from '@shared/hooks/useAsyncValue';
@@ -15,6 +15,10 @@ export function ProjectDetailsPage() {
   );
   const { value: documents } = useAsyncValue(
     () => customerPortalService.getProjectDocuments(projectId),
+    [projectId]
+  );
+  const { value: contracts } = useAsyncValue(
+    () => customerPortalService.getProjectContracts(projectId),
     [projectId]
   );
   const { value: approvals } = useAsyncValue(
@@ -39,7 +43,7 @@ export function ProjectDetailsPage() {
       <SectionHeading
         eyebrow="Project details"
         title={project?.name ?? 'Загрузка проекта'}
-        description="Карточка customer-проекта с реальными данными по срокам, документам, согласованиям и коммуникациям."
+        description="Карточка customer-проекта с реальными данными по срокам, договорам, документам и согласованиям."
       />
 
       <section className="detail-hero">
@@ -91,6 +95,10 @@ export function ProjectDetailsPage() {
           </div>
           <div className="profile-list">
             <div>
+              <span>Договоры</span>
+              <strong>{contracts?.length ?? 0}</strong>
+            </div>
+            <div>
               <span>Документы</span>
               <strong>{documents?.length ?? 0}</strong>
             </div>
@@ -107,6 +115,31 @@ export function ProjectDetailsPage() {
       </section>
 
       <section className="dual-columns">
+        <article className="plain-panel">
+          <div className="panel-head">
+            <h3>Договоры по проекту</h3>
+          </div>
+          <div className="list-stack">
+            {contracts?.length ? (
+              contracts.map((item) => (
+                <div key={item.id} className="list-row">
+                  <div>
+                    <strong>
+                      <Link to={`/dashboard/contracts/${item.id}`}>{item.number}</Link>
+                    </strong>
+                    <p>{item.subject ?? 'Предмет договора уточняется'}</p>
+                  </div>
+                  <StatusPill tone={item.status === 'completed' ? 'success' : 'primary'}>
+                    {item.status_label ?? item.status}
+                  </StatusPill>
+                </div>
+              ))
+            ) : (
+              <p className="empty-state">Договоров по проекту пока нет.</p>
+            )}
+          </div>
+        </article>
+
         <article className="plain-panel">
           <div className="panel-head">
             <h3>Документы проекта</h3>
@@ -127,7 +160,9 @@ export function ProjectDetailsPage() {
             )}
           </div>
         </article>
+      </section>
 
+      <section className="dual-columns">
         <article className="plain-panel">
           <div className="panel-head">
             <h3>Согласования проекта</h3>
@@ -139,6 +174,11 @@ export function ProjectDetailsPage() {
                   <div>
                     <strong>{item.title}</strong>
                     <p>{item.projectName}</p>
+                    {item.contractId ? (
+                      <p>
+                        <Link to={`/dashboard/contracts/${item.contractId}`}>Открыть договор</Link>
+                      </p>
+                    ) : null}
                   </div>
                   <StatusPill
                     tone={
@@ -155,6 +195,29 @@ export function ProjectDetailsPage() {
               ))
             ) : (
               <p className="empty-state">Открытых согласований по проекту сейчас нет.</p>
+            )}
+          </div>
+        </article>
+
+        <article className="plain-panel">
+          <div className="panel-head">
+            <h3>Коммуникации</h3>
+          </div>
+          <div className="list-stack">
+            {conversations?.length ? (
+              conversations.map((item) => (
+                <div key={item.id} className="list-row">
+                  <div>
+                    <strong>{item.title}</strong>
+                    <p>{item.lastMessage}</p>
+                  </div>
+                  <StatusPill tone={item.unreadCount > 0 ? 'warning' : 'neutral'}>
+                    {item.unreadCount > 0 ? `Новых: ${item.unreadCount}` : 'Прочитано'}
+                  </StatusPill>
+                </div>
+              ))
+            ) : (
+              <p className="empty-state">Переписка по проекту пока не начата.</p>
             )}
           </div>
         </article>

@@ -3,6 +3,8 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { LoginPage } from '@features/auth/LoginPage';
 import { RegisterPage } from '@features/auth/RegisterPage';
 import { VerifyEmailPage } from '@features/auth/VerifyEmailPage';
+import { ContractDetailsPage } from '@features/contracts/ContractDetailsPage';
+import { ContractsPage } from '@features/contracts/ContractsPage';
 import { DashboardPage } from '@features/dashboard/DashboardPage';
 import { ProjectsPage } from '@features/projects/ProjectsPage';
 import { ProjectDetailsPage } from '@features/projects/ProjectDetailsPage';
@@ -31,6 +33,8 @@ export function AppRouter() {
         }
       >
         <Route index element={<DashboardPage />} />
+        <Route path="contracts" element={<ContractsPage />} />
+        <Route path="contracts/:contractId" element={<ContractDetailsPage />} />
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="projects/:projectId" element={<ProjectDetailsPage />} />
         <Route path="documents" element={<DocumentsPage />} />

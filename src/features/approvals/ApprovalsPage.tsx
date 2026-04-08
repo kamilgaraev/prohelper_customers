@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 import { customerPortalService } from '@shared/api/customerPortalService';
 import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { SectionHeading } from '@shared/ui/SectionHeading';
@@ -21,6 +23,11 @@ export function ApprovalsPage() {
               <div>
                 <strong>{item.title}</strong>
                 <p>{item.projectName}</p>
+                {item.contractId ? (
+                  <p>
+                    <Link to={`/dashboard/contracts/${item.contractId}`}>Открыть договор</Link>
+                  </p>
+                ) : null}
               </div>
               <div className="row-actions">
                 <StatusPill

@@ -6,6 +6,7 @@ import { ApiEnvelope } from '@shared/types/api';
 import { CustomerRole, CustomerUser } from '@shared/types/auth';
 import {
   ApprovalItem,
+  CustomerContractItem,
   ConversationItem,
   DashboardMetric,
   DocumentItem,
@@ -100,6 +101,43 @@ export const customerPortalService = {
       }
 
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить проект'));
+    }
+  },
+
+  async getContracts(): Promise<CustomerContractItem[]> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<{ items: CustomerContractItem[] }>>('/contracts');
+      return extractApiData(response.data).items;
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить договоры'));
+    }
+  },
+
+  async getProjectContracts(projectId: number): Promise<CustomerContractItem[]> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<{ items: CustomerContractItem[] }>>(
+        `/projects/${projectId}/contracts`
+      );
+
+      return extractApiData(response.data).items;
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить договоры проекта'));
+    }
+  },
+
+  async getContract(contractId: number): Promise<CustomerContractItem | null> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<{ contract: CustomerContractItem }>>(
+        `/contracts/${contractId}`
+      );
+
+      return extractApiData(response.data).contract;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return null;
+      }
+
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить договор'));
     }
   },
 
