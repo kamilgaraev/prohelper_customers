@@ -18,6 +18,26 @@ function getTone(status?: string | null) {
   return 'neutral';
 }
 
+function formatMoney(value: number | null | undefined): string {
+  if (value === null || value === undefined) {
+    return '—';
+  }
+
+  return `${value.toLocaleString('ru-RU')} ₽`;
+}
+
+function getRoleLabel(role?: string | null): string {
+  if (role === 'customer') {
+    return 'Заказчик';
+  }
+
+  if (role === 'initiator') {
+    return 'Инициатор договора';
+  }
+
+  return 'Не указана';
+}
+
 export function ContractDetailsPage() {
   const params = useParams<{ contractId: string }>();
   const location = useLocation();
@@ -41,7 +61,7 @@ export function ContractDetailsPage() {
       <SectionHeading
         eyebrow="Contract details"
         title={contract?.number ?? 'Загрузка договора'}
-        description="Карточка договора заказчика с проектом, контрагентом, сроками и финансовой сводкой."
+        description="Карточка договора показывает стороны, проект, сроки и финансовую сводку по customer-side договору."
       />
 
       <section className="detail-hero">
@@ -50,13 +70,16 @@ export function ContractDetailsPage() {
             {contract?.status_label ?? contract?.status ?? 'Подготовка данных'}
           </StatusPill>
           <h2>{contract?.subject ?? 'Предмет договора уточняется'}</h2>
+          <p>{contract?.contract_side?.display_label ?? 'Договор по проекту'}</p>
           <p>
             {contract?.project?.name ?? 'Проект не указан'}
-            {contract?.contractor?.name ? ` • ${contract.contractor.name}` : ''}
+            {contract?.contract_side?.executor_organization?.name
+              ? ` • ${contract.contract_side.executor_organization.name}`
+              : ''}
           </p>
           <p>
             <Link to={`/dashboard/contracts${backSearch}`}>Назад к списку договоров</Link>
-            {contract?.project?.id ? ` • ` : ''}
+            {contract?.project?.id ? ' • ' : ''}
             {contract?.project?.id ? (
               <Link to={`/dashboard/projects/${contract.project.id}`}>Открыть проект</Link>
             ) : null}
@@ -65,15 +88,11 @@ export function ContractDetailsPage() {
         <div className="detail-kpis">
           <div>
             <small>Сумма</small>
-            <strong>
-              {contract?.total_amount !== null && contract?.total_amount !== undefined
-                ? `${contract.total_amount.toLocaleString('ru-RU')} ₽`
-                : '—'}
-            </strong>
+            <strong>{formatMoney(contract?.total_amount)}</strong>
           </div>
           <div>
             <small>Оплачено</small>
-            <strong>{contract ? `${contract.paid_amount.toLocaleString('ru-RU')} ₽` : '—'}</strong>
+            <strong>{formatMoney(contract?.paid_amount)}</strong>
           </div>
         </div>
       </section>
@@ -89,18 +108,20 @@ export function ContractDetailsPage() {
               <strong>{contract?.project?.name ?? 'Не указан'}</strong>
             </div>
             <div>
-              <span>Заказчик</span>
-              <strong>{contract?.customer?.name ?? 'Не указан'}</strong>
+              <span>Тип договора</span>
+              <strong>{contract?.contract_side?.display_label ?? 'Не указан'}</strong>
             </div>
             <div>
-              <span>Источник заказчика</span>
-              <strong>
-                {contract?.customer?.is_fallback_owner
-                  ? 'Владелец проекта (fallback)'
-                  : contract?.customer?.source === 'project_participant'
-                    ? 'Участник проекта'
-                    : 'Не указан'}
-              </strong>
+              <span>Заказчик</span>
+              <strong>{contract?.contract_side?.customer_organization?.name ?? contract?.customer?.name ?? 'Не указан'}</strong>
+            </div>
+            <div>
+              <span>Исполнитель</span>
+              <strong>{contract?.contract_side?.executor_organization?.name ?? contract?.contractor?.name ?? 'Не указан'}</strong>
+            </div>
+            <div>
+              <span>Ваша роль</span>
+              <strong>{getRoleLabel(contract?.current_organization_role)}</strong>
             </div>
             <div>
               <span>Дата договора</span>
@@ -109,7 +130,8 @@ export function ContractDetailsPage() {
             <div>
               <span>Сроки</span>
               <strong>
-                {contract?.start_date ? formatDate(contract.start_date) : '—'} / {contract?.end_date ? formatDate(contract.end_date) : 'Без срока'}
+                {contract?.start_date ? formatDate(contract.start_date) : '—'} /{' '}
+                {contract?.end_date ? formatDate(contract.end_date) : 'Без срока'}
               </strong>
             </div>
           </div>
@@ -117,28 +139,24 @@ export function ContractDetailsPage() {
 
         <article className="plain-panel">
           <div className="panel-head">
-            <h3>Контрагент и финансы</h3>
+            <h3>Финансы и исполнение</h3>
           </div>
           <div className="profile-list">
             <div>
-              <span>Подрядчик</span>
-              <strong>{contract?.contractor?.name ?? 'Не указан'}</strong>
+              <span>Исполнитель</span>
+              <strong>{contract?.contractor?.name ?? contract?.contract_side?.executor_organization?.name ?? 'Не указан'}</strong>
             </div>
             <div>
               <span>Выполнено</span>
-              <strong>{contract ? `${contract.performed_amount.toLocaleString('ru-RU')} ₽` : '—'}</strong>
+              <strong>{formatMoney(contract?.performed_amount)}</strong>
             </div>
             <div>
               <span>Оплачено</span>
-              <strong>{contract ? `${contract.paid_amount.toLocaleString('ru-RU')} ₽` : '—'}</strong>
+              <strong>{formatMoney(contract?.paid_amount)}</strong>
             </div>
             <div>
               <span>Остаток</span>
-              <strong>
-                {contract?.remaining_amount !== null && contract?.remaining_amount !== undefined
-                  ? `${contract.remaining_amount.toLocaleString('ru-RU')} ₽`
-                  : '—'}
-              </strong>
+              <strong>{formatMoney(contract?.remaining_amount)}</strong>
             </div>
             <div>
               <span>Категория</span>

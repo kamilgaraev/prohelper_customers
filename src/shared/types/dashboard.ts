@@ -7,6 +7,10 @@ export interface DashboardMetric {
 export interface CustomerContractParty {
   id: number;
   name: string;
+  entity_type?: string | null;
+  organization_id?: number | null;
+  organization_name?: string | null;
+  is_self_execution?: boolean;
 }
 
 export interface CustomerResolvedCustomer extends CustomerContractParty {
@@ -31,6 +35,19 @@ export interface ProjectDetails extends ProjectPreview {
   description: string | null;
   startDate: string | null;
   endDate: string | null;
+}
+
+export type CustomerContractSideType =
+  | 'customer_to_general_contractor'
+  | 'general_contractor_to_contractor'
+  | 'general_contractor_to_supplier'
+  | 'contractor_to_subcontractor';
+
+export interface CustomerContractSideSummary {
+  type: CustomerContractSideType | null;
+  display_label: string;
+  customer_organization: CustomerContractParty | null;
+  executor_organization: CustomerContractParty | null;
 }
 
 export interface CustomerContractItem {
@@ -58,7 +75,9 @@ export interface CustomerContractItem {
   remaining_amount: number | null;
   is_self_execution: boolean;
   contract_category: string | null;
-  customer: CustomerResolvedCustomer | null;
+  customer: CustomerContractParty | null;
+  contract_side?: CustomerContractSideSummary | null;
+  current_organization_role?: string | null;
 }
 
 export interface CustomerContractsFilters {

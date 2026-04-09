@@ -6,6 +6,10 @@ import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
 import { formatDate } from '@shared/utils/format';
 
+function getResolvedCustomerSourceLabel(isFallbackOwner?: boolean): string {
+  return isFallbackOwner ? 'Определен по владельцу проекта' : 'Определен по участникам проекта';
+}
+
 export function ProjectDetailsPage() {
   const params = useParams<{ projectId: string }>();
   const projectId = Number(params.projectId);
@@ -43,14 +47,14 @@ export function ProjectDetailsPage() {
       <SectionHeading
         eyebrow="Project details"
         title={project?.name ?? 'Загрузка проекта'}
-        description="Карточка customer-проекта с актуальными данными по срокам, договорам, документам и согласованиям."
+        description="Карточка проекта показывает сроки, договоры, документы, согласования и рабочие коммуникации."
       />
 
       <section className="detail-hero">
         <div>
           <StatusPill tone="primary">{project?.phase ?? 'Подготовка данных'}</StatusPill>
           <h2>{project?.location ?? 'Проверяем проектный контур'}</h2>
-          <p>{project?.description ?? project?.leadLabel ?? 'Собираем customer-safe проекцию данных по проекту.'}</p>
+          <p>{project?.description ?? project?.leadLabel ?? 'Собираем данные по проекту для customer-кабинета.'}</p>
         </div>
         <div className="detail-kpis">
           <div>
@@ -83,13 +87,11 @@ export function ProjectDetailsPage() {
               <strong>{project?.resolved_customer?.name ?? 'Не указан'}</strong>
             </div>
             <div>
-              <span>Источник заказчика</span>
+              <span>Как определен заказчик</span>
               <strong>
-                {project?.resolved_customer?.is_fallback_owner
-                  ? 'Владелец проекта (fallback)'
-                  : project?.resolved_customer?.source === 'project_participant'
-                    ? 'Участник проекта'
-                    : 'Не указан'}
+                {project?.resolved_customer
+                  ? getResolvedCustomerSourceLabel(project.resolved_customer.is_fallback_owner)
+                  : 'Не указан'}
               </strong>
             </div>
             <div>
@@ -143,6 +145,7 @@ export function ProjectDetailsPage() {
                       <Link to={`/dashboard/contracts/${item.id}?project_id=${projectId}`}>{item.number}</Link>
                     </strong>
                     <p>{item.subject ?? 'Предмет договора уточняется'}</p>
+                    <p>{item.contract_side?.display_label ?? 'Договор по проекту'}</p>
                   </div>
                   <StatusPill tone={item.status === 'completed' ? 'success' : 'primary'}>
                     {item.status_label ?? item.status}
@@ -150,7 +153,7 @@ export function ProjectDetailsPage() {
                 </div>
               ))
             ) : (
-              <p className="empty-state">Договоров по проекту пока нет.</p>
+              <p className="empty-state">По проекту пока нет договоров, доступных заказчику.</p>
             )}
           </div>
         </article>
@@ -190,9 +193,7 @@ export function ProjectDetailsPage() {
                     <strong>{item.title}</strong>
                     <p>{item.projectName}</p>
                     {item.contractNumber || item.contractSubject ? (
-                      <p>
-                        {[item.contractNumber, item.contractSubject].filter(Boolean).join(' • ')}
-                      </p>
+                      <p>{[item.contractNumber, item.contractSubject].filter(Boolean).join(' • ')}</p>
                     ) : null}
                     {item.contractId ? (
                       <p>

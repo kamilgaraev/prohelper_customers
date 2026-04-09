@@ -32,9 +32,20 @@ describe('customerPortalService contracts flow', () => {
               customer: {
                 id: 9,
                 name: 'ООО Заказчик',
-                source: 'project_participant',
-                is_fallback_owner: false,
               },
+              contract_side: {
+                type: 'customer_to_general_contractor',
+                display_label: 'Заказчик -> Генподрядчик',
+                customer_organization: {
+                  id: 9,
+                  name: 'ООО Заказчик',
+                },
+                executor_organization: {
+                  id: 18,
+                  name: 'ООО Генподрядчик',
+                },
+              },
+              current_organization_role: 'customer',
             },
           ],
           meta: {
@@ -69,7 +80,8 @@ describe('customerPortalService contracts flow', () => {
       },
     });
     expect(response.items).toHaveLength(1);
-    expect(response.items[0].customer?.source).toBe('project_participant');
+    expect(response.items[0].contract_side?.type).toBe('customer_to_general_contractor');
+    expect(response.items[0].current_organization_role).toBe('customer');
     expect(response.meta.filters.project_id).toBe(7);
   });
 

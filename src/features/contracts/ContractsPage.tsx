@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 
 import { customerPortalService } from '@shared/api/customerPortalService';
 import { useAsyncValue } from '@shared/hooks/useAsyncValue';
-import { CustomerContractsFilters } from '@shared/types/dashboard';
+import { CustomerContractsFilters, CustomerContractItem } from '@shared/types/dashboard';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
 
@@ -30,6 +30,23 @@ function parseFilters(searchParams: URLSearchParams): CustomerContractsFilters {
     date_to: searchParams.get('date_to') || undefined,
     search: searchParams.get('search') || undefined,
   };
+}
+
+function formatMoney(value: number | null | undefined): string {
+  if (value === null || value === undefined) {
+    return 'Сумма уточняется';
+  }
+
+  return `${value.toLocaleString('ru-RU')} ₽`;
+}
+
+function formatParties(contract: CustomerContractItem): string {
+  const parties = [
+    contract.contract_side?.customer_organization?.name ?? contract.customer?.name,
+    contract.contract_side?.executor_organization?.name ?? contract.contractor?.name,
+  ].filter(Boolean);
+
+  return parties.length > 0 ? parties.join(' • ') : 'Стороны договора уточняются';
 }
 
 export function ContractsPage() {
@@ -72,8 +89,8 @@ export function ContractsPage() {
     <div className="page-stack">
       <SectionHeading
         eyebrow="Contracts"
-        title="Контракты заказчика"
-        description="Read-only список договоров по доступным проектам с фильтрами, пагинацией и быстрыми переходами в карточки."
+        title="Договоры заказчика"
+        description="Показываем только те договоры, где ваша организация участвует как заказчик. Здесь можно отфильтровать список и открыть карточку договора."
       />
 
       <section className="plain-panel">
@@ -123,7 +140,7 @@ export function ContractsPage() {
             </select>
           </label>
           <label>
-            <span>ID подрядчика</span>
+            <span>ID исполнителя</span>
             <input
               type="number"
               value={draftFilters.contractor_id ?? ''}
@@ -186,17 +203,12 @@ export function ContractsPage() {
                     </Link>
                   </strong>
                   <p>{contract.subject ?? 'Предмет договора уточняется'}</p>
-                  <p>
-                    {contract.project?.name ?? 'Без проекта'}
-                    {contract.contractor?.name ? ` • ${contract.contractor.name}` : ''}
-                  </p>
+                  <p>{contract.contract_side?.display_label ?? 'Договор по проекту'}</p>
+                  <p>{formatParties(contract)}</p>
+                  <p>{contract.project?.name ?? 'Без проекта'}</p>
                 </div>
                 <div className="row-actions">
-                  <p className="conversation-preview">
-                    {contract.total_amount !== null
-                      ? `${contract.total_amount.toLocaleString('ru-RU')} ₽`
-                      : 'Сумма уточняется'}
-                  </p>
+                  <p className="conversation-preview">{formatMoney(contract.total_amount)}</p>
                   <StatusPill tone={getTone(contract.status)}>
                     {contract.status_label ?? contract.status}
                   </StatusPill>
