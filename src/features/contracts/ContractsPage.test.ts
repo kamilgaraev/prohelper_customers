@@ -11,7 +11,7 @@ describe('ContractsPage helpers', () => {
     expect(filters.search).toBe('C-12');
   });
 
-  it('formats contract parties using explicit contract side payload', () => {
+  it('formats contract parties using neutral contract side payload', () => {
     const result = formatParties({
       id: 1,
       number: 'C-1',
@@ -32,6 +32,10 @@ describe('ContractsPage helpers', () => {
       contract_side: {
         type: 'customer_to_general_contractor',
         display_label: 'Заказчик -> Генподрядчик',
+        first_party: { id: 1, name: 'ООО Заказчик' },
+        second_party: { id: 2, name: 'ООО Генподрядчик' },
+        first_party_role_label: 'Заказчик',
+        second_party_role_label: 'Генподрядчик',
         customer_organization: { id: 1, name: 'ООО Заказчик' },
         executor_organization: { id: 2, name: 'ООО Генподрядчик' },
       },

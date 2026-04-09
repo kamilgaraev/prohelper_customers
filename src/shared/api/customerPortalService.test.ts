@@ -36,6 +36,16 @@ describe('customerPortalService contracts flow', () => {
               contract_side: {
                 type: 'customer_to_general_contractor',
                 display_label: 'Заказчик -> Генподрядчик',
+                first_party: {
+                  id: 9,
+                  name: 'ООО Заказчик',
+                },
+                second_party: {
+                  id: 18,
+                  name: 'ООО Генподрядчик',
+                },
+                first_party_role_label: 'Заказчик',
+                second_party_role_label: 'Генподрядчик',
                 customer_organization: {
                   id: 9,
                   name: 'ООО Заказчик',

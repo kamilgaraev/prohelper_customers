@@ -43,8 +43,8 @@ function formatMoney(value: number | null | undefined): string {
 
 export function formatParties(contract: CustomerContractItem): string {
   const parties = [
-    contract.contract_side?.customer_organization?.name ?? contract.customer?.name,
-    contract.contract_side?.executor_organization?.name ?? contract.contractor?.name,
+    contract.contract_side?.first_party?.name ?? contract.contract_side?.customer_organization?.name ?? contract.customer?.name,
+    contract.contract_side?.second_party?.name ?? contract.contract_side?.executor_organization?.name ?? contract.contractor?.name,
   ].filter(Boolean);
 
   return parties.length > 0 ? parties.join(' • ') : 'Стороны договора уточняются';

@@ -95,13 +95,19 @@ export type CustomerContractSideType =
   | 'customer_to_general_contractor'
   | 'general_contractor_to_contractor'
   | 'general_contractor_to_supplier'
-  | 'contractor_to_subcontractor';
+  | 'contractor_to_subcontractor'
+  | 'contractor_to_supplier'
+  | 'subcontractor_to_supplier';
 
 export interface CustomerContractSideSummary {
   type: CustomerContractSideType | null;
   display_label: string;
-  customer_organization: CustomerContractParty | null;
-  executor_organization: CustomerContractParty | null;
+  first_party: CustomerContractParty | null;
+  second_party: CustomerContractParty | null;
+  first_party_role_label: string | null;
+  second_party_role_label: string | null;
+  customer_organization?: CustomerContractParty | null;
+  executor_organization?: CustomerContractParty | null;
 }
 
 export interface CustomerContractItem {

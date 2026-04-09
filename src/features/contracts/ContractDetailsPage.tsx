@@ -1,8 +1,8 @@
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 
 import { customerPortalService } from '@shared/api/customerPortalService';
-import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { usePermissions } from '@shared/contexts/PermissionsContext';
+import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
 import { formatDate } from '@shared/utils/format';
@@ -99,8 +99,8 @@ export function ContractDetailsPage() {
           <div className="profile-list">
             <div><span>Проект</span><strong>{contract?.project?.name ?? 'Не указан'}</strong></div>
             <div><span>Тип договора</span><strong>{contract?.contract_side?.display_label ?? 'Не указан'}</strong></div>
-            <div><span>Заказчик</span><strong>{contract?.contract_side?.customer_organization?.name ?? contract?.customer?.name ?? 'Не указан'}</strong></div>
-            <div><span>Исполнитель</span><strong>{contract?.contract_side?.executor_organization?.name ?? contract?.contractor?.name ?? 'Не указан'}</strong></div>
+            <div><span>{contract?.contract_side?.first_party_role_label ?? 'Первая сторона'}</span><strong>{contract?.contract_side?.first_party?.name ?? contract?.contract_side?.customer_organization?.name ?? contract?.customer?.name ?? 'Не указан'}</strong></div>
+            <div><span>{contract?.contract_side?.second_party_role_label ?? 'Вторая сторона'}</span><strong>{contract?.contract_side?.second_party?.name ?? contract?.contract_side?.executor_organization?.name ?? contract?.contractor?.name ?? 'Не указан'}</strong></div>
             <div><span>Ваша роль</span><strong>{getRoleLabel(contract?.current_organization_role)}</strong></div>
             <div><span>Дата договора</span><strong>{formatDate(contract?.date)}</strong></div>
             <div><span>Сроки</span><strong>{formatDate(contract?.start_date)} / {formatDate(contract?.end_date)}</strong></div>
