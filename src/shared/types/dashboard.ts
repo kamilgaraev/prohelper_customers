@@ -4,6 +4,17 @@ export interface DashboardMetric {
   tone: 'primary' | 'neutral' | 'success' | 'warning';
 }
 
+export interface CustomerContractParty {
+  id: number;
+  name: string;
+}
+
+export interface CustomerResolvedCustomer extends CustomerContractParty {
+  source?: 'project_participant' | 'project_owner';
+  role?: 'customer' | 'owner';
+  is_fallback_owner?: boolean;
+}
+
 export interface ProjectPreview {
   id: number;
   name: string;
@@ -12,6 +23,7 @@ export interface ProjectPreview {
   completion: number;
   budgetLabel: string;
   leadLabel: string;
+  resolved_customer?: CustomerResolvedCustomer | null;
 }
 
 export interface ProjectDetails extends ProjectPreview {
@@ -19,15 +31,6 @@ export interface ProjectDetails extends ProjectPreview {
   description: string | null;
   startDate: string | null;
   endDate: string | null;
-}
-
-export interface CustomerContractParty {
-  id: number;
-  name: string;
-}
-
-export interface CustomerResolvedCustomer extends CustomerContractParty {
-  source?: 'project_participant' | 'project_owner';
 }
 
 export interface CustomerContractItem {
@@ -58,13 +61,39 @@ export interface CustomerContractItem {
   customer: CustomerResolvedCustomer | null;
 }
 
+export interface CustomerContractsFilters {
+  page?: number;
+  per_page?: number;
+  project_id?: number;
+  status?: string;
+  contractor_id?: number;
+  date_from?: string;
+  date_to?: string;
+  search?: string;
+}
+
+export interface PaginatedCustomerContractsResponse {
+  items: CustomerContractItem[];
+  meta: {
+    current_page: number;
+    per_page: number;
+    total: number;
+    last_page: number;
+    filters: CustomerContractsFilters;
+  };
+}
+
 export interface ApprovalItem {
   id: number;
   title: string;
   projectName: string;
   contractId?: number | null;
+  contractNumber?: string | null;
+  contractSubject?: string | null;
+  contractStatus?: string | null;
   deadlineLabel: string;
   status: 'pending' | 'changes_requested' | 'approved';
+  amount?: string | null;
 }
 
 export interface ConversationItem {

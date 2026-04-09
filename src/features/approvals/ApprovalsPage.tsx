@@ -13,7 +13,7 @@ export function ApprovalsPage() {
       <SectionHeading
         eyebrow="Approvals"
         title="Контур согласований"
-        description="Здесь отображаются акты и документы, по которым backend уже отдает customer-видимость. Действия approve/reject будут включены отдельно, когда появится соответствующий API-контур."
+        description="Здесь отображаются акты и документы, по которым backend уже отдает customer-видимость. Карточка согласования показывает привязку к договору, если она есть."
       />
       <section className="list-surface">
         {error ? <div className="form-error">{error}</div> : null}
@@ -23,6 +23,9 @@ export function ApprovalsPage() {
               <div>
                 <strong>{item.title}</strong>
                 <p>{item.projectName}</p>
+                {item.contractNumber || item.contractSubject ? (
+                  <p>{[item.contractNumber, item.contractSubject].filter(Boolean).join(' • ')}</p>
+                ) : null}
                 {item.contractId ? (
                   <p>
                     <Link to={`/dashboard/contracts/${item.contractId}`}>Открыть договор</Link>

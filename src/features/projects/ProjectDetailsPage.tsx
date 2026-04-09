@@ -17,8 +17,8 @@ export function ProjectDetailsPage() {
     () => customerPortalService.getProjectDocuments(projectId),
     [projectId]
   );
-  const { value: contracts } = useAsyncValue(
-    () => customerPortalService.getProjectContracts(projectId),
+  const { value: contractsResponse } = useAsyncValue(
+    () => customerPortalService.getProjectContracts(projectId, { page: 1, per_page: 5 }),
     [projectId]
   );
   const { value: approvals } = useAsyncValue(
@@ -43,7 +43,7 @@ export function ProjectDetailsPage() {
       <SectionHeading
         eyebrow="Project details"
         title={project?.name ?? 'Загрузка проекта'}
-        description="Карточка customer-проекта с реальными данными по срокам, договорам, документам и согласованиям."
+        description="Карточка customer-проекта с актуальными данными по срокам, договорам, документам и согласованиям."
       />
 
       <section className="detail-hero">
@@ -79,6 +79,20 @@ export function ProjectDetailsPage() {
               <strong>{project?.leadLabel ?? 'Не указан'}</strong>
             </div>
             <div>
+              <span>Заказчик проекта</span>
+              <strong>{project?.resolved_customer?.name ?? 'Не указан'}</strong>
+            </div>
+            <div>
+              <span>Источник заказчика</span>
+              <strong>
+                {project?.resolved_customer?.is_fallback_owner
+                  ? 'Владелец проекта (fallback)'
+                  : project?.resolved_customer?.source === 'project_participant'
+                    ? 'Участник проекта'
+                    : 'Не указан'}
+              </strong>
+            </div>
+            <div>
               <span>Старт</span>
               <strong>{formatDate(project?.startDate)}</strong>
             </div>
@@ -96,7 +110,7 @@ export function ProjectDetailsPage() {
           <div className="profile-list">
             <div>
               <span>Договоры</span>
-              <strong>{contracts?.length ?? 0}</strong>
+              <strong>{contractsResponse?.meta.total ?? 0}</strong>
             </div>
             <div>
               <span>Документы</span>
@@ -118,14 +132,15 @@ export function ProjectDetailsPage() {
         <article className="plain-panel">
           <div className="panel-head">
             <h3>Договоры по проекту</h3>
+            <Link to={`/dashboard/contracts?project_id=${projectId}`}>Все договоры проекта</Link>
           </div>
           <div className="list-stack">
-            {contracts?.length ? (
-              contracts.map((item) => (
+            {contractsResponse?.items.length ? (
+              contractsResponse.items.map((item) => (
                 <div key={item.id} className="list-row">
                   <div>
                     <strong>
-                      <Link to={`/dashboard/contracts/${item.id}`}>{item.number}</Link>
+                      <Link to={`/dashboard/contracts/${item.id}?project_id=${projectId}`}>{item.number}</Link>
                     </strong>
                     <p>{item.subject ?? 'Предмет договора уточняется'}</p>
                   </div>
@@ -174,9 +189,14 @@ export function ProjectDetailsPage() {
                   <div>
                     <strong>{item.title}</strong>
                     <p>{item.projectName}</p>
+                    {item.contractNumber || item.contractSubject ? (
+                      <p>
+                        {[item.contractNumber, item.contractSubject].filter(Boolean).join(' • ')}
+                      </p>
+                    ) : null}
                     {item.contractId ? (
                       <p>
-                        <Link to={`/dashboard/contracts/${item.contractId}`}>Открыть договор</Link>
+                        <Link to={`/dashboard/contracts/${item.contractId}?project_id=${projectId}`}>Открыть договор</Link>
                       </p>
                     ) : null}
                   </div>

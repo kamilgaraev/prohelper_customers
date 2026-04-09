@@ -6,11 +6,13 @@ import { ApiEnvelope } from '@shared/types/api';
 import { CustomerRole, CustomerUser } from '@shared/types/auth';
 import {
   ApprovalItem,
-  CustomerContractItem,
   ConversationItem,
+  CustomerContractsFilters,
+  CustomerContractItem,
   DashboardMetric,
   DocumentItem,
   NotificationItem,
+  PaginatedCustomerContractsResponse,
   ProjectDetails,
   ProjectPreview,
   SupportRequestItem,
@@ -69,6 +71,12 @@ function normalizeCustomerUser(profile: CustomerProfileResponseData['user']): Cu
   };
 }
 
+function sanitizeContractFilters(filters: CustomerContractsFilters = {}): CustomerContractsFilters {
+  return Object.fromEntries(
+    Object.entries(filters).filter(([, value]) => value !== undefined && value !== null && value !== '')
+  ) as CustomerContractsFilters;
+}
+
 export const customerPortalService = {
   async getMetrics(): Promise<DashboardMetric[]> {
     try {
@@ -104,22 +112,31 @@ export const customerPortalService = {
     }
   },
 
-  async getContracts(): Promise<CustomerContractItem[]> {
+  async getContracts(
+    filters: CustomerContractsFilters = {}
+  ): Promise<PaginatedCustomerContractsResponse> {
     try {
-      const response = await customerApi.get<ApiEnvelope<{ items: CustomerContractItem[] }>>('/contracts');
-      return extractApiData(response.data).items;
+      const response = await customerApi.get<ApiEnvelope<PaginatedCustomerContractsResponse>>(
+        '/contracts',
+        { params: sanitizeContractFilters(filters) }
+      );
+      return extractApiData(response.data);
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить договоры'));
     }
   },
 
-  async getProjectContracts(projectId: number): Promise<CustomerContractItem[]> {
+  async getProjectContracts(
+    projectId: number,
+    filters: CustomerContractsFilters = {}
+  ): Promise<PaginatedCustomerContractsResponse> {
     try {
-      const response = await customerApi.get<ApiEnvelope<{ items: CustomerContractItem[] }>>(
-        `/projects/${projectId}/contracts`
+      const response = await customerApi.get<ApiEnvelope<PaginatedCustomerContractsResponse>>(
+        `/projects/${projectId}/contracts`,
+        { params: sanitizeContractFilters(filters) }
       );
 
-      return extractApiData(response.data).items;
+      return extractApiData(response.data);
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить договоры проекта'));
     }

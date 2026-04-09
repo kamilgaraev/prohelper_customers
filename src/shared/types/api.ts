@@ -9,3 +9,11 @@ export interface ApiErrorEnvelope {
   message?: string;
   errors?: Record<string, string[]>;
 }
+
+export interface PaginatedMeta<TFilters = Record<string, unknown>> {
+  current_page: number;
+  per_page: number;
+  total: number;
+  last_page: number;
+  filters: TFilters;
+}
