@@ -19,18 +19,17 @@ const emptyPermissions: PermissionsData = {
 const PermissionsContext = createContext<PermissionsContextValue | undefined>(undefined);
 
 export function PermissionsProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [permissions, setPermissions] = useState<PermissionsData>(emptyPermissions);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !isAuthenticated) {
       setPermissions(emptyPermissions);
       setIsLoaded(true);
       return;
     }
 
-    const currentUser = user;
     let cancelled = false;
 
     async function loadPermissions() {
@@ -42,18 +41,13 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
         if (!cancelled) {
           setPermissions({
             permissionsFlat: nextPermissions.permissionsFlat,
-            roles: nextPermissions.roles.length ? nextPermissions.roles : currentUser.roles,
-            interfaces:
-              nextPermissions.interfaces.length ? nextPermissions.interfaces : currentUser.interfaces
+            roles: nextPermissions.roles,
+            interfaces: nextPermissions.interfaces
           });
         }
       } catch {
         if (!cancelled) {
-          setPermissions({
-            permissionsFlat: [],
-            roles: currentUser.roles?.length ? currentUser.roles : [currentUser.role],
-            interfaces: currentUser.interfaces
-          });
+          setPermissions(emptyPermissions);
         }
       } finally {
         if (!cancelled) {
@@ -67,7 +61,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [isAuthenticated, user]);
 
   const value = useMemo<PermissionsContextValue>(
     () => ({

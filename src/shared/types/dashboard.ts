@@ -104,6 +104,87 @@ export interface ProjectPreview {
   resolved_customer?: CustomerResolvedCustomer | null;
 }
 
+export interface CustomerProjectParticipant {
+  id: number;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  inn?: string | null;
+  role: string;
+  role_label: string;
+  is_owner: boolean;
+  is_active: boolean;
+  invited_at?: string | null;
+  accepted_at?: string | null;
+}
+
+export interface CustomerProjectParticipantInvitation {
+  id: number;
+  status: string;
+  status_reason?: string | null;
+  role: string;
+  role_label: string;
+  organization_name?: string | null;
+  email?: string | null;
+  inn?: string | null;
+  contact_name?: string | null;
+  phone?: string | null;
+  message?: string | null;
+  expires_at?: string | null;
+  accepted_at?: string | null;
+  cancelled_at?: string | null;
+  resent_at?: string | null;
+  invited_organization?: {
+    id: number;
+    name: string;
+  } | null;
+}
+
+export interface CustomerProjectInvitationRoleOption {
+  value: 'general_contractor' | 'contractor';
+  label: string;
+}
+
+export interface CustomerProjectParticipantsResponse {
+  participants: CustomerProjectParticipant[];
+  invitations: CustomerProjectParticipantInvitation[];
+  can_manage: boolean;
+  allowed_roles: CustomerProjectInvitationRoleOption[];
+}
+
+export interface CustomerOrganizationSearchItem {
+  id: number;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  inn?: string | null;
+  city?: string | null;
+  is_verified: boolean;
+  allowed_roles: CustomerProjectInvitationRoleOption[];
+  availability_status: {
+    can_invite: boolean;
+    already_participant: boolean;
+    pending_invitation: boolean;
+  };
+}
+
+export interface CustomerProjectInvitationRegistryItem {
+  id: number;
+  project: {
+    id: number;
+    name: string;
+  };
+  status: string;
+  role: string;
+  role_label: string;
+  organization_name?: string | null;
+  email?: string | null;
+  expires_at?: string | null;
+  accepted_at?: string | null;
+  cancelled_at?: string | null;
+  resent_at?: string | null;
+}
+
 export type CustomerContractSideType =
   | 'customer_to_general_contractor'
   | 'general_contractor_to_contractor'

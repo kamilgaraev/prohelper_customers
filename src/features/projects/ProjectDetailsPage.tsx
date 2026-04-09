@@ -1,12 +1,39 @@
+import { FormEvent, useEffect, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 
 import { customerPortalService } from '@shared/api/customerPortalService';
 import { usePermissions } from '@shared/contexts/PermissionsContext';
-import { useAsyncValue } from '@shared/hooks/useAsyncValue';
-import { ProjectTimelineItem } from '@shared/types/dashboard';
+import {
+  CustomerOrganizationSearchItem,
+  CustomerProjectParticipantInvitation,
+  CustomerProjectParticipantsResponse,
+  ProjectTimelineItem,
+  ProjectWorkspaceResponse,
+} from '@shared/types/dashboard';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
 import { formatDate } from '@shared/utils/format';
+
+interface InvitationFormState {
+  role: 'general_contractor' | 'contractor';
+  organization_id?: number;
+  organization_name: string;
+  email: string;
+  inn: string;
+  contact_name: string;
+  phone: string;
+  message: string;
+}
+
+const initialInvitationForm: InvitationFormState = {
+  role: 'general_contractor',
+  organization_name: '',
+  email: '',
+  inn: '',
+  contact_name: '',
+  phone: '',
+  message: '',
+};
 
 function formatMoney(value?: number | null) {
   if (value === null || value === undefined) {
@@ -29,15 +56,136 @@ function getTimelineLink(item: ProjectTimelineItem): string | null {
   }
 }
 
+function getInvitationTone(invitation: CustomerProjectParticipantInvitation): 'primary' | 'neutral' | 'success' | 'warning' {
+  switch (invitation.status) {
+    case 'accepted':
+      return 'success';
+    case 'cancelled':
+    case 'declined':
+    case 'expired':
+      return 'neutral';
+    default:
+      return 'warning';
+  }
+}
+
+function getAvailabilityLabel(item: CustomerOrganizationSearchItem): string {
+  if (item.availability_status.already_participant) {
+    return 'Уже участвует в проекте';
+  }
+
+  if (item.availability_status.pending_invitation) {
+    return 'Приглашение уже отправлено';
+  }
+
+  return 'Можно пригласить';
+}
+
 export function ProjectDetailsPage() {
   const params = useParams<{ projectId: string }>();
   const projectId = Number(params.projectId);
   const { canAccess } = usePermissions();
   const canViewFinance = canAccess({ permission: 'customer.finance.view' });
-  const { value: workspace, isLoading, error } = useAsyncValue(
-    () => customerPortalService.getProjectWorkspace(projectId),
-    [projectId]
-  );
+
+  const [workspace, setWorkspace] = useState<ProjectWorkspaceResponse['workspace'] | null>(null);
+  const [participantsState, setParticipantsState] = useState<CustomerProjectParticipantsResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [invitationForm, setInvitationForm] = useState<InvitationFormState>(initialInvitationForm);
+  const [invitationError, setInvitationError] = useState<string | null>(null);
+  const [isSubmittingInvitation, setIsSubmittingInvitation] = useState(false);
+  const [invitationActionId, setInvitationActionId] = useState<number | null>(null);
+  const [organizationQuery, setOrganizationQuery] = useState('');
+  const [organizationSearchResults, setOrganizationSearchResults] = useState<CustomerOrganizationSearchItem[]>([]);
+  const [isSearchingOrganizations, setIsSearchingOrganizations] = useState(false);
+
+  useEffect(() => {
+    if (!Number.isFinite(projectId)) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function load() {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const [nextWorkspace, nextParticipants] = await Promise.all([
+          customerPortalService.getProjectWorkspace(projectId),
+          customerPortalService.getProjectParticipants(projectId),
+        ]);
+
+        if (!cancelled) {
+          setWorkspace(nextWorkspace);
+          setParticipantsState(nextParticipants);
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(loadError instanceof Error ? loadError.message : 'Не удалось загрузить проект.');
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!participantsState?.can_manage || organizationQuery.trim().length < 2) {
+      setOrganizationSearchResults([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function runSearch() {
+      setIsSearchingOrganizations(true);
+
+      try {
+        const items = await customerPortalService.searchProjectOrganizations(projectId, {
+          query: organizationQuery.trim(),
+          role: invitationForm.role,
+        });
+
+        if (!cancelled) {
+          setOrganizationSearchResults(items);
+        }
+      } catch (searchError) {
+        if (!cancelled) {
+          setInvitationError(searchError instanceof Error ? searchError.message : 'Не удалось выполнить поиск организаций.');
+        }
+      } finally {
+        if (!cancelled) {
+          setIsSearchingOrganizations(false);
+        }
+      }
+    }
+
+    const timer = window.setTimeout(() => {
+      void runSearch();
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [invitationForm.role, organizationQuery, participantsState?.can_manage, projectId]);
+
+  const allowedRoles = participantsState?.allowed_roles ?? [];
+  const canManageParticipants = participantsState?.can_manage ?? false;
+  const project = workspace?.project;
+  const documents = workspace?.documents.items ?? [];
+  const approvals = workspace?.approvals.items ?? [];
+  const timeline = workspace?.timeline ?? [];
+  const riskCenter = workspace?.risk_center;
 
   if (!Number.isFinite(projectId)) {
     return <Navigate to="/dashboard/projects" replace />;
@@ -47,18 +195,89 @@ export function ProjectDetailsPage() {
     return <Navigate to="/dashboard/projects" replace />;
   }
 
-  const project = workspace?.project;
-  const documents = workspace?.documents.items ?? [];
-  const approvals = workspace?.approvals.items ?? [];
-  const timeline = workspace?.timeline ?? [];
-  const riskCenter = workspace?.risk_center;
+  async function reloadParticipants() {
+    const nextParticipants = await customerPortalService.getProjectParticipants(projectId);
+    setParticipantsState(nextParticipants);
+  }
+
+  function handleSelectOrganization(item: CustomerOrganizationSearchItem) {
+    setInvitationForm((current) => ({
+      ...current,
+      organization_id: item.id,
+      organization_name: item.name,
+      email: item.email ?? current.email,
+      inn: item.inn ?? current.inn,
+      phone: item.phone ?? current.phone,
+    }));
+    setOrganizationQuery(item.name);
+    setOrganizationSearchResults([]);
+  }
+
+  function resetSelectedOrganization() {
+    setInvitationForm((current) => ({
+      ...current,
+      organization_id: undefined,
+      organization_name: '',
+      email: '',
+      inn: '',
+      phone: '',
+    }));
+    setOrganizationQuery('');
+  }
+
+  async function handleInviteSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setInvitationError(null);
+    setIsSubmittingInvitation(true);
+
+    try {
+      await customerPortalService.createProjectInvitation(projectId, {
+        role: invitationForm.role,
+        organization_id: invitationForm.organization_id,
+        organization_name: invitationForm.organization_name.trim() || undefined,
+        email: invitationForm.email.trim() || undefined,
+        inn: invitationForm.inn.trim() || undefined,
+        contact_name: invitationForm.contact_name.trim() || undefined,
+        phone: invitationForm.phone.trim() || undefined,
+        message: invitationForm.message.trim() || undefined,
+      });
+
+      setInvitationForm(initialInvitationForm);
+      setOrganizationQuery('');
+      setOrganizationSearchResults([]);
+      await reloadParticipants();
+    } catch (submitError) {
+      setInvitationError(submitError instanceof Error ? submitError.message : 'Не удалось отправить приглашение.');
+    } finally {
+      setIsSubmittingInvitation(false);
+    }
+  }
+
+  async function handleInvitationAction(invitationId: number, action: 'cancel' | 'resend') {
+    setInvitationActionId(invitationId);
+    setInvitationError(null);
+
+    try {
+      if (action === 'cancel') {
+        await customerPortalService.cancelProjectInvitation(projectId, invitationId);
+      } else {
+        await customerPortalService.resendProjectInvitation(projectId, invitationId);
+      }
+
+      await reloadParticipants();
+    } catch (actionError) {
+      setInvitationError(actionError instanceof Error ? actionError.message : 'Не удалось обновить приглашение.');
+    } finally {
+      setInvitationActionId(null);
+    }
+  }
 
   return (
     <div className="page-stack">
       <SectionHeading
         eyebrow="Project workspace"
         title={project?.name ?? 'Загрузка проекта'}
-        description="Паспорт проекта, ключевые договоры, документы, согласования, риски и последние события на одном экране."
+        description="Паспорт проекта, ключевые договоры, документы, согласования, риски и участники на одном экране."
       />
 
       {error ? <div className="form-error">{error}</div> : null}
@@ -181,6 +400,237 @@ export function ProjectDetailsPage() {
           </div>
         </section>
       ) : null}
+
+      <section className="plain-panel plain-panel--wide">
+        <div className="panel-head">
+          <h3>Участники проекта</h3>
+          {canManageParticipants ? <StatusPill tone="primary">Можно приглашать</StatusPill> : null}
+        </div>
+
+        <div className="list-stack">
+          {participantsState?.participants.length ? (
+            participantsState.participants.map((participant) => (
+              <div key={participant.id} className="list-row participant-row">
+                <div>
+                  <strong>{participant.name}</strong>
+                  <p>
+                    {participant.role_label}
+                    {participant.inn ? ` • ИНН ${participant.inn}` : ''}
+                    {participant.email ? ` • ${participant.email}` : ''}
+                  </p>
+                </div>
+                <div className="row-actions">
+                  <StatusPill tone={participant.is_owner ? 'primary' : 'neutral'}>
+                    {participant.is_owner ? 'Владелец' : participant.role_label}
+                  </StatusPill>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="empty-state">Участники проекта еще не добавлены.</p>
+          )}
+        </div>
+
+        <div className="panel-head panel-head--spaced">
+          <h3>Приглашения</h3>
+        </div>
+
+        <div className="list-stack">
+          {participantsState?.invitations.length ? (
+            participantsState.invitations.map((invitation) => (
+              <div key={invitation.id} className="list-row participant-row">
+                <div>
+                  <strong>{invitation.organization_name ?? invitation.invited_organization?.name ?? 'Организация'}</strong>
+                  <p>
+                    {invitation.role_label}
+                    {invitation.email ? ` • ${invitation.email}` : ''}
+                    {invitation.contact_name ? ` • ${invitation.contact_name}` : ''}
+                  </p>
+                </div>
+                <div className="row-actions">
+                  <StatusPill tone={getInvitationTone(invitation)}>{invitation.status}</StatusPill>
+                  {canManageParticipants && invitation.status === 'pending' ? (
+                    <div className="button-row button-row--compact">
+                      <button
+                        type="button"
+                        className="ghost-button"
+                        disabled={invitationActionId === invitation.id}
+                        onClick={() => void handleInvitationAction(invitation.id, 'resend')}
+                      >
+                        Повторить
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost-button"
+                        disabled={invitationActionId === invitation.id}
+                        onClick={() => void handleInvitationAction(invitation.id, 'cancel')}
+                      >
+                        Отменить
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="empty-state">Активных приглашений по проекту пока нет.</p>
+          )}
+        </div>
+
+        {canManageParticipants ? (
+          <form className="inline-form invitation-form" onSubmit={handleInviteSubmit}>
+            <div className="panel-head panel-head--spaced">
+              <h3>Пригласить участника</h3>
+            </div>
+
+            <div className="form-grid form-grid--two">
+              <label>
+                <span>Роль</span>
+                <select
+                  value={invitationForm.role}
+                  onChange={(event) => {
+                    const role = event.target.value as InvitationFormState['role'];
+                    setInvitationForm((current) => ({
+                      ...current,
+                      role,
+                      organization_id: undefined,
+                    }));
+                    setOrganizationQuery('');
+                    setOrganizationSearchResults([]);
+                  }}
+                >
+                  {allowedRoles.map((role) => (
+                    <option key={role.value} value={role.value}>
+                      {role.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span>Поиск организации</span>
+                <input
+                  value={organizationQuery}
+                  onChange={(event) => {
+                    setOrganizationQuery(event.target.value);
+                    setInvitationForm((current) => ({
+                      ...current,
+                      organization_id: undefined,
+                    }));
+                  }}
+                  placeholder="Название, email или ИНН"
+                />
+              </label>
+
+              <label>
+                <span>Email</span>
+                <input
+                  type="email"
+                  value={invitationForm.email}
+                  onChange={(event) => setInvitationForm((current) => ({ ...current, email: event.target.value }))}
+                  placeholder="contact@company.ru"
+                  required={!invitationForm.organization_id}
+                />
+              </label>
+
+              <label>
+                <span>Организация</span>
+                <input
+                  value={invitationForm.organization_name}
+                  onChange={(event) =>
+                    setInvitationForm((current) => ({ ...current, organization_name: event.target.value }))
+                  }
+                  placeholder="ООО СтройКомпания"
+                  required={!invitationForm.organization_id}
+                />
+              </label>
+
+              <label>
+                <span>Контактное лицо</span>
+                <input
+                  value={invitationForm.contact_name}
+                  onChange={(event) =>
+                    setInvitationForm((current) => ({ ...current, contact_name: event.target.value }))
+                  }
+                  placeholder="Имя и должность"
+                />
+              </label>
+
+              <label>
+                <span>ИНН</span>
+                <input
+                  value={invitationForm.inn}
+                  onChange={(event) => setInvitationForm((current) => ({ ...current, inn: event.target.value }))}
+                  placeholder="При наличии"
+                />
+              </label>
+
+              <label>
+                <span>Телефон</span>
+                <input
+                  value={invitationForm.phone}
+                  onChange={(event) => setInvitationForm((current) => ({ ...current, phone: event.target.value }))}
+                  placeholder="+7 ..."
+                />
+              </label>
+
+              <label className="form-grid__wide">
+                <span>Сообщение</span>
+                <textarea
+                  rows={4}
+                  value={invitationForm.message}
+                  onChange={(event) => setInvitationForm((current) => ({ ...current, message: event.target.value }))}
+                  placeholder="Кратко опишите, к какому проекту и в каком качестве вы приглашаете участника"
+                />
+              </label>
+            </div>
+
+            {invitationForm.organization_id ? (
+              <div className="form-success">
+                Выбрана организация: <strong>{invitationForm.organization_name}</strong>
+                <button type="button" className="ghost-button" onClick={resetSelectedOrganization}>
+                  Сбросить выбор
+                </button>
+              </div>
+            ) : null}
+
+            {organizationQuery.trim().length >= 2 ? (
+              <div className="search-results">
+                {isSearchingOrganizations ? (
+                  <p className="empty-state">Ищем организации...</p>
+                ) : organizationSearchResults.length ? (
+                  organizationSearchResults.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className="search-result-card"
+                      disabled={!item.availability_status.can_invite}
+                      onClick={() => handleSelectOrganization(item)}
+                    >
+                      <strong>{item.name}</strong>
+                      <span>
+                        {item.email ? `${item.email} • ` : ''}
+                        {item.inn ? `ИНН ${item.inn}` : 'Реквизиты уточняются'}
+                      </span>
+                      <span>{getAvailabilityLabel(item)}</span>
+                    </button>
+                  ))
+                ) : (
+                  <p className="empty-state">Подходящих организаций не найдено. Можно отправить приглашение вручную.</p>
+                )}
+              </div>
+            ) : null}
+
+            {invitationError ? <div className="form-error">{invitationError}</div> : null}
+
+            <div className="button-row">
+              <button type="submit" disabled={isSubmittingInvitation}>
+                {isSubmittingInvitation ? 'Отправляем приглашение...' : 'Пригласить участника'}
+              </button>
+            </div>
+          </form>
+        ) : null}
+      </section>
 
       <section className="dual-columns">
         <article className="plain-panel">

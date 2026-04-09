@@ -7,7 +7,7 @@ import { useAuth } from '@shared/contexts/AuthContext';
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated, isLoading } = useAuth();
+  const { login, isAuthenticated, isLoading, status } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -17,11 +17,17 @@ export function LoginPage() {
     setError(null);
 
     try {
-      await login({ email, password });
-      const from = (location.state as { from?: string } | null)?.from ?? '/dashboard';
-      navigate(from, { replace: true });
+      const result = await login({ email, password });
+
+      if ('token' in result) {
+        const from = (location.state as { from?: string } | null)?.from ?? '/dashboard';
+        navigate(from, { replace: true });
+        return;
+      }
+
+      navigate('/verification-required', { replace: true });
     } catch (loginError) {
-      setError(loginError instanceof Error ? loginError.message : 'Не удалось выполнить вход');
+      setError(loginError instanceof Error ? loginError.message : 'Не удалось выполнить вход.');
     }
   }
 
@@ -29,13 +35,17 @@ export function LoginPage() {
     return <Navigate to="/dashboard" replace />;
   }
 
+  if (status === 'pending_verification') {
+    return <Navigate to="/verification-required" replace />;
+  }
+
   return (
     <AuthLayout
-      title="Единый кабинет заказчика"
-      description="Контролируйте статус объектов, документы, согласования и рабочие переписки в одном интерфейсе."
+      title="Кабинет заказчика ProHelper"
+      description="Контролируйте проекты, документы, согласования и ключевые события в одном рабочем пространстве."
       footer={
         <p>
-          Нет аккаунта? <Link to="/register">Создать customer-профиль</Link>
+          Нет аккаунта? <Link to="/register">Создать кабинет</Link>
         </p>
       }
     >
@@ -62,6 +72,7 @@ export function LoginPage() {
         <button type="submit" disabled={isLoading}>
           {isLoading ? 'Входим...' : 'Открыть кабинет'}
         </button>
+        <Link to="/forgot-password">Забыли пароль?</Link>
       </form>
     </AuthLayout>
   );

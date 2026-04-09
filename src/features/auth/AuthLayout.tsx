@@ -18,7 +18,7 @@ export function AuthLayout({ title, description, children, footer }: AuthLayoutP
           <span>Проекты</span>
           <span>Документы</span>
           <span>Согласования</span>
-          <span>Коммуникации</span>
+          <span>События</span>
         </div>
       </div>
       <div className="auth-panel">
@@ -28,4 +28,3 @@ export function AuthLayout({ title, description, children, footer }: AuthLayoutP
     </div>
   );
 }
-

@@ -10,6 +10,9 @@ import {
   CustomerContractsFilters,
   CustomerContractItem,
   CustomerIssueItem,
+  CustomerOrganizationSearchItem,
+  CustomerProjectParticipantsResponse,
+  CustomerProjectInvitationRegistryItem,
   CustomerRequestItem,
   CustomerTeamMemberDetailsResponse,
   CustomerTeamResponse,
@@ -139,6 +142,27 @@ export const customerPortalService = {
     }
   },
 
+  async createProject(payload: {
+    name: string;
+    address?: string;
+    description?: string;
+    customer?: string;
+    designer?: string;
+    start_date?: string;
+    end_date?: string;
+    status?: 'active' | 'completed' | 'paused' | 'cancelled';
+    budget_amount?: number;
+    site_area_m2?: number;
+    contract_number?: string;
+  }): Promise<ProjectDetails> {
+    try {
+      const response = await customerApi.post<ApiEnvelope<{ project: ProjectDetails }>>('/projects', payload);
+      return extractApiData(response.data).project;
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось создать проект'));
+    }
+  },
+
   async getProject(projectId: number): Promise<ProjectDetails | null> {
     try {
       const response = await customerApi.get<ApiEnvelope<{ project: ProjectDetails }>>(`/projects/${projectId}`);
@@ -190,6 +214,95 @@ export const customerPortalService = {
       }
 
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить риски проекта'));
+    }
+  },
+
+  async getProjectParticipants(projectId: number): Promise<CustomerProjectParticipantsResponse | null> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<CustomerProjectParticipantsResponse>>(`/projects/${projectId}/participants`);
+      return extractApiData(response.data);
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return null;
+      }
+
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить участников проекта'));
+    }
+  },
+
+  async createProjectInvitation(
+    projectId: number,
+    payload: {
+      role: 'general_contractor' | 'contractor';
+      organization_id?: number;
+      organization_name?: string;
+      email?: string;
+      inn?: string;
+      contact_name?: string;
+      phone?: string;
+      message?: string;
+    }
+  ) {
+    try {
+      const response = await customerApi.post<
+        ApiEnvelope<{ invitation: CustomerProjectParticipantsResponse['invitations'][number] }>
+      >(`/projects/${projectId}/participants/invitations`, payload);
+      return extractApiData(response.data).invitation;
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось отправить приглашение'));
+    }
+  },
+
+  async cancelProjectInvitation(projectId: number, invitationId: number) {
+    try {
+      const response = await customerApi.post<
+        ApiEnvelope<{ invitation: CustomerProjectParticipantsResponse['invitations'][number] }>
+      >(`/projects/${projectId}/participants/invitations/${invitationId}/cancel`);
+      return extractApiData(response.data).invitation;
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось отменить приглашение'));
+    }
+  },
+
+  async resendProjectInvitation(projectId: number, invitationId: number) {
+    try {
+      const response = await customerApi.post<
+        ApiEnvelope<{ invitation: CustomerProjectParticipantsResponse['invitations'][number] }>
+      >(`/projects/${projectId}/participants/invitations/${invitationId}/resend`);
+      return extractApiData(response.data).invitation;
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось отправить приглашение повторно'));
+    }
+  },
+
+  async searchProjectOrganizations(
+    projectId: number,
+    params: {
+      query: string;
+      role: 'general_contractor' | 'contractor';
+    }
+  ): Promise<CustomerOrganizationSearchItem[]> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<{ items: CustomerOrganizationSearchItem[] }>>(
+        `/projects/${projectId}/participants/search-organizations`,
+        {
+          params: sanitizeParams(params),
+        }
+      );
+      return extractApiData(response.data).items ?? [];
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось выполнить поиск организаций.'));
+    }
+  },
+
+  async getProjectInvitations(): Promise<CustomerProjectInvitationRegistryItem[]> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<{ items: CustomerProjectInvitationRegistryItem[] }>>(
+        '/projects/invitations'
+      );
+      return extractApiData(response.data).items ?? [];
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить приглашения по проектам.'));
     }
   },
 

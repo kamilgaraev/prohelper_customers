@@ -6,7 +6,7 @@ import { useAuth } from '@shared/contexts/AuthContext';
 
 export function RegisterPage() {
   const navigate = useNavigate();
-  const { register, isAuthenticated, isLoading } = useAuth();
+  const { register, isAuthenticated, isLoading, status } = useAuth();
   const [name, setName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
@@ -19,9 +19,9 @@ export function RegisterPage() {
 
     try {
       await register({ name, companyName, email, password });
-      navigate('/dashboard', { replace: true });
+      navigate('/verification-required', { replace: true });
     } catch (registerError) {
-      setError(registerError instanceof Error ? registerError.message : 'Не удалось создать кабинет заказчика');
+      setError(registerError instanceof Error ? registerError.message : 'Не удалось создать кабинет заказчика.');
     }
   }
 
@@ -29,10 +29,14 @@ export function RegisterPage() {
     return <Navigate to="/dashboard" replace />;
   }
 
+  if (status === 'pending_verification') {
+    return <Navigate to="/verification-required" replace />;
+  }
+
   return (
     <AuthLayout
-      title="Создание кабинета заказчика"
-      description="Создайте отдельный кабинет заказчика и подготовьте рабочую среду для проектов, документов и согласований."
+      title="Регистрация кабинета заказчика"
+      description="Создайте защищенный кабинет и подключите рабочее пространство для проектов, документов и согласований."
       footer={
         <p>
           Уже есть доступ? <Link to="/login">Войти в кабинет</Link>
@@ -45,7 +49,7 @@ export function RegisterPage() {
           <input value={name} onChange={(event) => setName(event.target.value)} type="text" />
         </label>
         <label>
-          Компания
+          Организация
           <input
             value={companyName}
             onChange={(event) => setCompanyName(event.target.value)}

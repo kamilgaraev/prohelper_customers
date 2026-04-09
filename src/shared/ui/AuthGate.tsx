@@ -6,11 +6,15 @@ import { usePermissions } from '@shared/contexts/PermissionsContext';
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const location = useLocation();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, status } = useAuth();
   const { canAccess, isLoaded } = usePermissions();
 
   if (isLoading || !isLoaded) {
-    return <div className="screen-loader">Подготавливаем customer-портал...</div>;
+    return <div className="screen-loader">Подготавливаем кабинет заказчика...</div>;
+  }
+
+  if (status === 'pending_verification') {
+    return <Navigate to="/verification-required" replace />;
   }
 
   if (!isAuthenticated) {
@@ -23,4 +27,3 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   return <>{children}</>;
 }
-
