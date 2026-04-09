@@ -18,6 +18,7 @@ export const customerNavigation = [
   { to: '/dashboard', label: 'Обзор', icon: LayoutDashboard },
   { to: '/dashboard/contracts', label: 'Договоры', icon: FileSignature },
   { to: '/dashboard/finance', label: 'Финансы', icon: Landmark },
+  { to: '/dashboard/risks', label: 'Риски', icon: ShieldAlert },
   { to: '/dashboard/issues', label: 'Замечания', icon: ShieldAlert },
   { to: '/dashboard/requests', label: 'Запросы', icon: FolderGit2 },
   { to: '/dashboard/projects', label: 'Проекты', icon: FolderKanban },

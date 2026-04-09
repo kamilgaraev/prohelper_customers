@@ -4,11 +4,27 @@ export interface DashboardMetric {
   tone: 'primary' | 'neutral' | 'success' | 'warning';
 }
 
-export interface AttentionFeedItem {
+export interface LinkedProjectSummary {
   id: number;
+  name: string;
+  location?: string | null;
+}
+
+export interface RelatedEntitySummary {
+  type: string;
+  id: number;
+}
+
+export interface AttentionFeedItem {
+  id: string;
+  type: 'contract' | 'approval' | 'issue' | 'request';
   title: string;
   subtitle?: string | null;
   status: string;
+  priority: 'critical' | 'warning' | 'primary' | 'info' | 'success' | 'normal';
+  project?: LinkedProjectSummary | null;
+  related_entity?: RelatedEntitySummary | null;
+  created_at: string | null;
 }
 
 export interface FinanceTotals {
@@ -30,7 +46,19 @@ export interface FinanceProjectSummary {
     planned_budget: number | null;
     contracts_total: number;
     delta: number | null;
+    performed_vs_paid_delta: number;
+    payment_delay_amount: number;
+    problem_flags: string[];
   };
+}
+
+export interface DisciplineSummary {
+  issue_response_hours: number | null;
+  approval_cycle_hours: number;
+  rework_count: number;
+  overdue_actions_count: number;
+  stalled_items_count: number;
+  request_response_hours: number | null;
 }
 
 export interface DashboardData {
@@ -47,6 +75,7 @@ export interface DashboardData {
   } | null;
   project_risks: ProjectRiskItem[];
   recent_changes: RecentChangeItem[];
+  discipline_summary: DisciplineSummary;
 }
 
 export interface CustomerContractParty {
@@ -75,22 +104,6 @@ export interface ProjectPreview {
   resolved_customer?: CustomerResolvedCustomer | null;
 }
 
-export interface ProjectDetails extends ProjectPreview {
-  status: string | null;
-  description: string | null;
-  startDate: string | null;
-  endDate: string | null;
-  finance_summary?: FinanceProjectSummary | null;
-  key_contracts?: Array<{
-    id: number;
-    number: string;
-    subject: string | null;
-    status: string;
-    total_amount: number | null;
-  }>;
-  problem_flags?: ProjectRiskItem | null;
-}
-
 export type CustomerContractSideType =
   | 'customer_to_general_contractor'
   | 'general_contractor_to_contractor'
@@ -110,17 +123,39 @@ export interface CustomerContractSideSummary {
   executor_organization?: CustomerContractParty | null;
 }
 
+export interface ProjectRiskItem {
+  project: {
+    id: number;
+    name: string;
+  };
+  flags: string[];
+  pending_approvals: number;
+  documents_without_reaction: number;
+}
+
+export interface ProjectDetails extends ProjectPreview {
+  status: string | null;
+  description: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  finance_summary?: FinanceProjectSummary | null;
+  key_contracts?: Array<{
+    id: number;
+    number: string;
+    subject: string | null;
+    status: string;
+    total_amount: number | null;
+  }>;
+  problem_flags?: ProjectRiskItem | null;
+}
+
 export interface CustomerContractItem {
   id: number;
   number: string;
   subject: string | null;
   status: string;
   status_label?: string | null;
-  project: {
-    id: number;
-    name: string;
-    location?: string | null;
-  } | null;
+  project: LinkedProjectSummary | null;
   projects?: Array<{
     id: number;
     name: string;
@@ -247,23 +282,28 @@ export interface NotificationItem {
   title: string;
   description: string;
   createdAtLabel: string | null;
+  created_at: string | null;
   tone: 'primary' | 'neutral' | 'success' | 'warning';
   statusLabel: string;
   isUnread: boolean;
   eventType?: string | null;
+  project?: LinkedProjectSummary | null;
+  related_entity?: RelatedEntitySummary | null;
+  priority?: string | null;
 }
 
-export interface ProjectRiskItem {
-  project: {
-    id: number;
-    name: string;
+export interface NotificationCenterMeta {
+  organization_id: number;
+  unread_count: number;
+  total: number;
+  filters: {
+    unread?: boolean | string;
+    event_type?: string;
   };
-  flags: string[];
-  pending_approvals: number;
 }
 
 export interface RecentChangeItem {
-  type: 'contract' | 'document';
+  type: 'contract' | 'document' | 'issue';
   id: number;
   title: string;
   subtitle?: string | null;
@@ -288,6 +328,20 @@ export interface WorkflowComment {
   created_at: string | null;
 }
 
+export interface WorkflowHistoryItem {
+  type: string;
+  author_id?: number | null;
+  author_name?: string | null;
+  created_at: string | null;
+  body?: string | null;
+  status?: string | null;
+}
+
+export interface WorkflowAssignee {
+  id?: number | null;
+  name?: string | null;
+}
+
 export interface CustomerIssueItem {
   id: number;
   title: string;
@@ -305,6 +359,7 @@ export interface CustomerIssueItem {
     id: number;
     name: string;
   } | null;
+  assignee?: WorkflowAssignee | null;
   project?: {
     id: number;
     name: string;
@@ -324,6 +379,9 @@ export interface CustomerIssueItem {
     title: string;
   } | null;
   comments: WorkflowComment[];
+  history?: WorkflowHistoryItem[];
+  last_response_at?: string | null;
+  overdue_since?: string | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -345,6 +403,7 @@ export interface CustomerRequestItem {
     id: number;
     name: string;
   } | null;
+  assignee?: WorkflowAssignee | null;
   project?: {
     id: number;
     name: string;
@@ -355,8 +414,23 @@ export interface CustomerRequestItem {
     subject: string | null;
   } | null;
   comments: WorkflowComment[];
+  history?: WorkflowHistoryItem[];
+  last_response_at?: string | null;
+  overdue_since?: string | null;
   created_at: string | null;
   updated_at: string | null;
+}
+
+export interface CustomerTeamProjectAccess {
+  id: number;
+  name: string;
+}
+
+export interface CustomerTeamHistoryItem {
+  id: number;
+  action: string;
+  role?: string | null;
+  created_at: string | null;
 }
 
 export interface CustomerTeamMember {
@@ -365,8 +439,18 @@ export interface CustomerTeamMember {
   email: string;
   phone?: string | null;
   is_owner: boolean;
+  status: 'active' | 'inactive';
   roles: string[];
   interfaces: string[];
+  project_access: CustomerTeamProjectAccess[];
+  has_full_project_access: boolean;
+  access_history: CustomerTeamHistoryItem[];
+  available_project_count: number;
+}
+
+export interface CustomerTeamMemberDetailsResponse {
+  member: CustomerTeamMember;
+  current_user_id: number;
 }
 
 export interface CustomerRoleCatalogItem {
@@ -395,6 +479,9 @@ export interface NotificationSettings {
     contract_amount_changed: boolean;
     new_document: boolean;
     request_status_changed: boolean;
+    project_deadline_changed: boolean;
+    access_updated: boolean;
+    finance_risk_detected: boolean;
   };
   updated_at?: string;
   organization_id?: number;
@@ -418,3 +505,30 @@ export interface SupportRequestItem {
 }
 
 export type SupportRequestResult = SupportRequestItem;
+
+export interface ProjectTimelineItem {
+  id: string;
+  type: string;
+  title: string;
+  subtitle?: string | null;
+  project?: LinkedProjectSummary | null;
+  related_entity?: RelatedEntitySummary | null;
+  created_at: string | null;
+  status: string;
+  priority: string;
+}
+
+export interface ProjectWorkspaceResponse {
+  workspace: {
+    project: ProjectDetails;
+    documents: { items: DocumentItem[] };
+    approvals: { items: ApprovalItem[] };
+    timeline: ProjectTimelineItem[];
+    risk_center: ProjectRiskItem;
+    summary: {
+      documents_total: number;
+      approvals_total: number;
+      key_contracts_total: number;
+    };
+  };
+}

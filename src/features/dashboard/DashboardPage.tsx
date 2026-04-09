@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 
 import { customerPortalService } from '@shared/api/customerPortalService';
-import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { usePermissions } from '@shared/contexts/PermissionsContext';
+import { useAsyncValue } from '@shared/hooks/useAsyncValue';
+import { AttentionFeedItem } from '@shared/types/dashboard';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
 
@@ -12,6 +13,75 @@ function formatMoney(value?: number | null): string {
   }
 
   return `${value.toLocaleString('ru-RU')} ₽`;
+}
+
+function getPriorityTone(priority?: string): 'primary' | 'neutral' | 'success' | 'warning' {
+  if (priority === 'critical' || priority === 'warning') {
+    return 'warning';
+  }
+
+  if (priority === 'success') {
+    return 'success';
+  }
+
+  return 'primary';
+}
+
+function resolveItemLink(item: AttentionFeedItem): string | null {
+  const entity = item.related_entity;
+
+  if (!entity) {
+    return item.project ? `/dashboard/projects/${item.project.id}` : null;
+  }
+
+  switch (entity.type) {
+    case 'contract':
+      return `/dashboard/contracts/${entity.id}`;
+    case 'approval':
+      return item.project ? `/dashboard/projects/${item.project.id}` : '/dashboard/approvals';
+    case 'issue':
+      return `/dashboard/issues?selected=${entity.id}`;
+    case 'request':
+      return `/dashboard/requests?selected=${entity.id}`;
+    default:
+      return item.project ? `/dashboard/projects/${item.project.id}` : null;
+  }
+}
+
+function renderAttentionGroup(
+  title: string,
+  items: AttentionFeedItem[],
+  emptyText: string,
+  fallbackLink: string
+) {
+  return (
+    <article className="plain-panel">
+      <div className="panel-head">
+        <h3>{title}</h3>
+        <Link to={fallbackLink}>Открыть модуль</Link>
+      </div>
+      <div className="list-stack">
+        {items.length ? (
+          items.map((item) => {
+            const link = resolveItemLink(item);
+
+            return (
+              <div key={item.id} className="list-row">
+                <div>
+                  <strong>{link ? <Link to={link}>{item.title}</Link> : item.title}</strong>
+                  <p>{item.subtitle ?? item.project?.name ?? 'Контекст уточняется'}</p>
+                  <p>{item.project?.name ?? 'Без привязки к проекту'}</p>
+                </div>
+                <StatusPill tone={getPriorityTone(item.priority)}>{item.status}</StatusPill>
+              </div>
+            );
+          })
+        ) : (
+          <p className="empty-state">{emptyText}</p>
+        )}
+      </div>
+    </article>
+  );
 }
 
 export function DashboardPage() {
@@ -24,7 +94,7 @@ export function DashboardPage() {
       <SectionHeading
         eyebrow="Overview"
         title="Требует внимания"
-        description="Главный рабочий экран заказчика: новые договоры, ожидающие согласования, проектные риски и последние изменения в одном месте."
+        description="Главный рабочий экран заказчика: очереди действий, риски, деньги и последние изменения по доступным проектам."
       />
 
       {error ? <div className="form-error">{error}</div> : null}
@@ -44,52 +114,52 @@ export function DashboardPage() {
         ))}
       </section>
 
-      <section className="dual-columns">
-        <article className="plain-panel">
-          <div className="panel-head">
-            <h3>Новые договоры</h3>
-            <Link to="/dashboard/contracts">Открыть реестр</Link>
+      <section className="plain-panel">
+        <div className="panel-head">
+          <h3>Исполнительская дисциплина</h3>
+          <Link to="/dashboard/risks">Открыть центр контроля</Link>
+        </div>
+        <div className="profile-list">
+          <div>
+            <span>Ответ по замечаниям</span>
+            <strong>
+              {dashboard?.discipline_summary.issue_response_hours !== null && dashboard?.discipline_summary.issue_response_hours !== undefined
+                ? `${dashboard.discipline_summary.issue_response_hours} ч`
+                : '—'}
+            </strong>
           </div>
-          <div className="list-stack">
-            {dashboard?.attention_feed.contracts.length ? (
-              dashboard.attention_feed.contracts.map((item) => (
-                <div key={item.id} className="list-row">
-                  <div>
-                    <strong>
-                      <Link to={`/dashboard/contracts/${item.id}`}>{item.title}</Link>
-                    </strong>
-                    <p>{item.subtitle ?? 'Без проекта'}</p>
-                  </div>
-                  <StatusPill tone="primary">{item.status}</StatusPill>
-                </div>
-              ))
-            ) : (
-              <p className="empty-state">Новых договоров, требующих внимания, сейчас нет.</p>
-            )}
+          <div>
+            <span>Ответ по запросам</span>
+            <strong>
+              {dashboard?.discipline_summary.request_response_hours !== null && dashboard?.discipline_summary.request_response_hours !== undefined
+                ? `${dashboard.discipline_summary.request_response_hours} ч`
+                : '—'}
+            </strong>
           </div>
-        </article>
+          <div>
+            <span>Просроченные действия</span>
+            <strong>{dashboard?.discipline_summary.overdue_actions_count ?? '—'}</strong>
+          </div>
+          <div>
+            <span>Возвраты на доработку</span>
+            <strong>{dashboard?.discipline_summary.rework_count ?? '—'}</strong>
+          </div>
+        </div>
+      </section>
 
-        <article className="plain-panel">
-          <div className="panel-head">
-            <h3>Ожидают решения</h3>
-            <Link to="/dashboard/approvals">Все согласования</Link>
-          </div>
-          <div className="list-stack">
-            {dashboard?.attention_feed.approvals.length ? (
-              dashboard.attention_feed.approvals.map((item) => (
-                <div key={item.id} className="list-row">
-                  <div>
-                    <strong>{item.title}</strong>
-                    <p>{item.subtitle ?? 'Проект уточняется'}</p>
-                  </div>
-                  <StatusPill tone="warning">{item.status}</StatusPill>
-                </div>
-              ))
-            ) : (
-              <p className="empty-state">Открытых актов на согласовании сейчас нет.</p>
-            )}
-          </div>
-        </article>
+      <section className="dual-columns">
+        {renderAttentionGroup(
+          'Новые договоры',
+          dashboard?.attention_feed.contracts ?? [],
+          'Новых договоров, требующих внимания, сейчас нет.',
+          '/dashboard/contracts'
+        )}
+        {renderAttentionGroup(
+          'Ожидают решения',
+          dashboard?.attention_feed.approvals ?? [],
+          'Открытых актов на согласовании сейчас нет.',
+          '/dashboard/approvals'
+        )}
       </section>
 
       {canViewFinance && dashboard?.finance_summary ? (
@@ -123,7 +193,7 @@ export function DashboardPage() {
         <article className="plain-panel">
           <div className="panel-head">
             <h3>Проектные риски</h3>
-            <Link to="/dashboard/projects">Все проекты</Link>
+            <Link to="/dashboard/risks">Все риски</Link>
           </div>
           <div className="list-stack">
             {dashboard?.project_risks.length ? (
@@ -134,8 +204,11 @@ export function DashboardPage() {
                       <Link to={`/dashboard/projects/${risk.project.id}`}>{risk.project.name}</Link>
                     </strong>
                     <p>{risk.flags.join(' • ')}</p>
+                    <p>
+                      Актов без решения: {risk.pending_approvals} • Документов без реакции: {risk.documents_without_reaction}
+                    </p>
                   </div>
-                  <StatusPill tone="warning">{`${risk.pending_approvals} актов`}</StatusPill>
+                  <StatusPill tone="warning">Риск</StatusPill>
                 </div>
               ))
             ) : (
@@ -156,7 +229,9 @@ export function DashboardPage() {
                     <strong>{item.title}</strong>
                     <p>{item.subtitle ?? 'Изменение в рабочем пространстве проекта'}</p>
                   </div>
-                  <StatusPill tone="neutral">{item.type === 'contract' ? 'Договор' : 'Документ'}</StatusPill>
+                  <StatusPill tone="neutral">
+                    {item.type === 'contract' ? 'Договор' : item.type === 'issue' ? 'Замечание' : 'Документ'}
+                  </StatusPill>
                 </div>
               ))
             ) : (
@@ -167,49 +242,18 @@ export function DashboardPage() {
       </section>
 
       <section className="dual-columns">
-        <article className="plain-panel">
-          <div className="panel-head">
-            <h3>Замечания</h3>
-            <Link to="/dashboard/issues">Открыть модуль</Link>
-          </div>
-          <div className="list-stack">
-            {dashboard?.attention_feed.issues.length ? (
-              dashboard.attention_feed.issues.map((item) => (
-                <div key={item.id} className="list-row">
-                  <div>
-                    <strong>{item.title}</strong>
-                    <p>{item.subtitle}</p>
-                  </div>
-                  <StatusPill tone="warning">{item.status}</StatusPill>
-                </div>
-              ))
-            ) : (
-              <p className="empty-state">Открытых замечаний сейчас нет.</p>
-            )}
-          </div>
-        </article>
-
-        <article className="plain-panel">
-          <div className="panel-head">
-            <h3>Запросы заказчика</h3>
-            <Link to="/dashboard/requests">Открыть модуль</Link>
-          </div>
-          <div className="list-stack">
-            {dashboard?.attention_feed.requests.length ? (
-              dashboard.attention_feed.requests.map((item) => (
-                <div key={item.id} className="list-row">
-                  <div>
-                    <strong>{item.title}</strong>
-                    <p>{item.subtitle}</p>
-                  </div>
-                  <StatusPill tone="primary">{item.status}</StatusPill>
-                </div>
-              ))
-            ) : (
-              <p className="empty-state">Активных запросов сейчас нет.</p>
-            )}
-          </div>
-        </article>
+        {renderAttentionGroup(
+          'Замечания',
+          dashboard?.attention_feed.issues ?? [],
+          'Открытых замечаний сейчас нет.',
+          '/dashboard/issues'
+        )}
+        {renderAttentionGroup(
+          'Запросы заказчика',
+          dashboard?.attention_feed.requests ?? [],
+          'Активных запросов сейчас нет.',
+          '/dashboard/requests'
+        )}
       </section>
     </div>
   );

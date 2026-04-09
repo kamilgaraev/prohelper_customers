@@ -11,15 +11,21 @@ import {
   CustomerContractItem,
   CustomerIssueItem,
   CustomerRequestItem,
+  CustomerTeamMemberDetailsResponse,
   CustomerTeamResponse,
   DashboardData,
+  DisciplineSummary,
   DocumentItem,
   FinanceSummaryResponse,
+  NotificationCenterMeta,
   NotificationItem,
   NotificationSettings,
   PaginatedCustomerContractsResponse,
   ProjectDetails,
   ProjectPreview,
+  ProjectRiskItem,
+  ProjectTimelineItem,
+  ProjectWorkspaceResponse,
   SupportRequestItem,
   SupportRequestPayload,
   SupportRequestResult,
@@ -43,6 +49,30 @@ interface CustomerPermissionsResponseData {
   roles?: string[];
   permissions_flat?: string[];
   interfaces?: string[];
+}
+
+interface NotificationFilters {
+  unread?: boolean;
+  event_type?: string;
+}
+
+interface NotificationCenterResponse {
+  items: NotificationItem[];
+  meta: NotificationCenterMeta;
+}
+
+interface IssueFilters {
+  project_id?: number;
+  status?: string;
+  issue_reason?: string;
+  due_state?: 'overdue';
+}
+
+interface RequestFilters {
+  project_id?: number;
+  status?: string;
+  request_type?: string;
+  due_state?: 'overdue';
 }
 
 function isCustomerRole(role: string): role is CustomerRole {
@@ -80,10 +110,14 @@ function normalizeCustomerUser(profile: CustomerProfileResponseData['user']): Cu
   };
 }
 
-function sanitizeContractFilters(filters: CustomerContractsFilters = {}): CustomerContractsFilters {
+function sanitizeParams<T extends object>(params: T): Partial<T> {
   return Object.fromEntries(
-    Object.entries(filters).filter(([, value]) => value !== undefined && value !== null && value !== '')
-  ) as CustomerContractsFilters;
+    Object.entries(params as Record<string, unknown>).filter(([, value]) => value !== undefined && value !== null && value !== '')
+  ) as Partial<T>;
+}
+
+function sanitizeContractFilters(filters: CustomerContractsFilters = {}): CustomerContractsFilters {
+  return sanitizeParams(filters) as CustomerContractsFilters;
 }
 
 export const customerPortalService = {
@@ -92,7 +126,7 @@ export const customerPortalService = {
       const response = await customerApi.get<ApiEnvelope<DashboardData>>('/dashboard');
       return extractApiData(response.data);
     } catch (error) {
-      throw new Error(resolveApiMessage(error, 'Не удалось загрузить обзор customer-кабинета'));
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить обзор кабинета заказчика'));
     }
   },
 
@@ -115,6 +149,47 @@ export const customerPortalService = {
       }
 
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить проект'));
+    }
+  },
+
+  async getProjectWorkspace(projectId: number): Promise<ProjectWorkspaceResponse['workspace'] | null> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<ProjectWorkspaceResponse>>(`/projects/${projectId}/workspace`);
+      return extractApiData(response.data).workspace;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return null;
+      }
+
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить рабочее пространство проекта'));
+    }
+  },
+
+  async getProjectTimeline(projectId: number): Promise<{ items: ProjectTimelineItem[]; meta: { project_id: number; total: number } } | null> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<{ items: ProjectTimelineItem[]; meta: { project_id: number; total: number } }>>(
+        `/projects/${projectId}/timeline`
+      );
+      return extractApiData(response.data);
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return null;
+      }
+
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить таймлайн проекта'));
+    }
+  },
+
+  async getProjectRisks(projectId: number): Promise<ProjectRiskItem | null> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<{ risk: ProjectRiskItem }>>(`/projects/${projectId}/risks`);
+      return extractApiData(response.data).risk;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return null;
+      }
+
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить риски проекта'));
     }
   },
 
@@ -180,6 +255,15 @@ export const customerPortalService = {
     }
   },
 
+  async getDisciplineAnalytics(): Promise<DisciplineSummary> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<{ summary: DisciplineSummary }>>('/analytics/discipline');
+      return extractApiData(response.data).summary;
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить аналитику дисциплины'));
+    }
+  },
+
   async getProjectDocuments(projectId: number): Promise<DocumentItem[]> {
     try {
       const response = await customerApi.get<ApiEnvelope<{ items: DocumentItem[] }>>(`/projects/${projectId}/documents`);
@@ -234,18 +318,22 @@ export const customerPortalService = {
     }
   },
 
-  async getNotifications(): Promise<NotificationItem[]> {
+  async getNotifications(filters: NotificationFilters = {}): Promise<NotificationCenterResponse> {
     try {
-      const response = await customerApi.get<ApiEnvelope<{ items: NotificationItem[] }>>('/notifications');
-      return extractApiData(response.data).items;
+      const response = await customerApi.get<ApiEnvelope<NotificationCenterResponse>>('/notifications', {
+        params: sanitizeParams(filters),
+      });
+      return extractApiData(response.data);
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить уведомления'));
     }
   },
 
-  async getIssues(): Promise<CustomerIssueItem[]> {
+  async getIssues(filters: IssueFilters = {}): Promise<CustomerIssueItem[]> {
     try {
-      const response = await customerApi.get<ApiEnvelope<{ items: CustomerIssueItem[] }>>('/issues');
+      const response = await customerApi.get<ApiEnvelope<{ items: CustomerIssueItem[] }>>('/issues', {
+        params: sanitizeParams(filters),
+      });
       return extractApiData(response.data).items;
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить замечания'));
@@ -302,9 +390,11 @@ export const customerPortalService = {
     }
   },
 
-  async getRequests(): Promise<CustomerRequestItem[]> {
+  async getRequests(filters: RequestFilters = {}): Promise<CustomerRequestItem[]> {
     try {
-      const response = await customerApi.get<ApiEnvelope<{ items: CustomerRequestItem[] }>>('/requests');
+      const response = await customerApi.get<ApiEnvelope<{ items: CustomerRequestItem[] }>>('/requests', {
+        params: sanitizeParams(filters),
+      });
       return extractApiData(response.data).items;
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить запросы'));
@@ -350,12 +440,37 @@ export const customerPortalService = {
     }
   },
 
+  async resolveRequest(
+    requestId: number,
+    status: 'accepted' | 'in_progress' | 'waiting_customer' | 'completed' | 'rejected'
+  ): Promise<CustomerRequestItem> {
+    try {
+      const response = await customerApi.post<ApiEnvelope<{ request: CustomerRequestItem }>>(`/requests/${requestId}/resolve`, { status });
+      return extractApiData(response.data).request;
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось обновить статус запроса'));
+    }
+  },
+
   async getTeam(): Promise<CustomerTeamResponse> {
     try {
       const response = await customerApi.get<ApiEnvelope<CustomerTeamResponse>>('/team');
       return extractApiData(response.data);
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить состав команды'));
+    }
+  },
+
+  async getTeamMember(memberId: number): Promise<CustomerTeamMemberDetailsResponse['member'] | null> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<CustomerTeamMemberDetailsResponse>>(`/team/${memberId}`);
+      return extractApiData(response.data).member;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return null;
+      }
+
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить карточку участника'));
     }
   },
 

@@ -10,6 +10,7 @@ import { FinancePage } from '@features/finance/FinancePage';
 import { IssuesPage } from '@features/issues/IssuesPage';
 import { ProjectsPage } from '@features/projects/ProjectsPage';
 import { ProjectDetailsPage } from '@features/projects/ProjectDetailsPage';
+import { RisksPage } from '@features/risks/RisksPage';
 import { RequestsPage } from '@features/requests/RequestsPage';
 import { DocumentsPage } from '@features/documents/DocumentsPage';
 import { ApprovalsPage } from '@features/approvals/ApprovalsPage';
@@ -40,6 +41,7 @@ export function AppRouter() {
         <Route path="contracts" element={<ContractsPage />} />
         <Route path="contracts/:contractId" element={<ContractDetailsPage />} />
         <Route path="finance" element={<FinancePage />} />
+        <Route path="risks" element={<RisksPage />} />
         <Route path="issues" element={<IssuesPage />} />
         <Route path="requests" element={<RequestsPage />} />
         <Route path="projects" element={<ProjectsPage />} />
