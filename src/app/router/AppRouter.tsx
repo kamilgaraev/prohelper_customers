@@ -6,13 +6,17 @@ import { VerifyEmailPage } from '@features/auth/VerifyEmailPage';
 import { ContractDetailsPage } from '@features/contracts/ContractDetailsPage';
 import { ContractsPage } from '@features/contracts/ContractsPage';
 import { DashboardPage } from '@features/dashboard/DashboardPage';
+import { FinancePage } from '@features/finance/FinancePage';
+import { IssuesPage } from '@features/issues/IssuesPage';
 import { ProjectsPage } from '@features/projects/ProjectsPage';
 import { ProjectDetailsPage } from '@features/projects/ProjectDetailsPage';
+import { RequestsPage } from '@features/requests/RequestsPage';
 import { DocumentsPage } from '@features/documents/DocumentsPage';
 import { ApprovalsPage } from '@features/approvals/ApprovalsPage';
 import { ConversationsPage } from '@features/conversations/ConversationsPage';
 import { NotificationsPage } from '@features/notifications/NotificationsPage';
 import { SupportPage } from '@features/support/SupportPage';
+import { TeamPage } from '@features/team/TeamPage';
 import { ProfilePage } from '@features/profile/ProfilePage';
 import { CustomerShell } from '@widgets/layout/CustomerShell';
 import { AuthGate } from '@shared/ui/AuthGate';
@@ -35,12 +39,16 @@ export function AppRouter() {
         <Route index element={<DashboardPage />} />
         <Route path="contracts" element={<ContractsPage />} />
         <Route path="contracts/:contractId" element={<ContractDetailsPage />} />
+        <Route path="finance" element={<FinancePage />} />
+        <Route path="issues" element={<IssuesPage />} />
+        <Route path="requests" element={<RequestsPage />} />
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="projects/:projectId" element={<ProjectDetailsPage />} />
         <Route path="documents" element={<DocumentsPage />} />
         <Route path="approvals" element={<ApprovalsPage />} />
         <Route path="conversations" element={<ConversationsPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
+        <Route path="team" element={<TeamPage />} />
         <Route path="support" element={<SupportPage />} />
         <Route path="profile" element={<ProfilePage />} />
       </Route>

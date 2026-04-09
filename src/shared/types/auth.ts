@@ -2,7 +2,11 @@ export type CustomerRole =
   | 'customer_owner'
   | 'customer_manager'
   | 'customer_approver'
-  | 'customer_viewer';
+  | 'customer_viewer'
+  | 'customer_curator'
+  | 'customer_financier'
+  | 'customer_legal'
+  | 'customer_observer';
 
 export interface CustomerUser {
   id: number;

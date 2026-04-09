@@ -13,7 +13,7 @@ export function ApprovalsPage() {
       <SectionHeading
         eyebrow="Approvals"
         title="Контур согласований"
-        description="Здесь собраны акты и документы, которые доступны заказчику. Если согласование связано с договором заказчика, из карточки можно перейти в договор."
+        description="Здесь собраны акты и согласования, доступные заказчику. Из карточки можно перейти в договор или открыть замечание по акту."
       />
       <section className="list-surface">
         {error ? <div className="form-error">{error}</div> : null}
@@ -31,17 +31,12 @@ export function ApprovalsPage() {
                     <Link to={`/dashboard/contracts/${item.contractId}`}>Открыть договор</Link>
                   </p>
                 ) : null}
+                <p>
+                  <Link to={`/dashboard/issues?project_id=${item.projectId ?? ''}&performance_act_id=${item.id}`}>Создать замечание</Link>
+                </p>
               </div>
               <div className="row-actions">
-                <StatusPill
-                  tone={
-                    item.status === 'approved'
-                      ? 'success'
-                      : item.status === 'changes_requested'
-                        ? 'warning'
-                        : 'primary'
-                  }
-                >
+                <StatusPill tone={item.status === 'approved' ? 'success' : item.status === 'changes_requested' ? 'warning' : 'primary'}>
                   {item.deadlineLabel}
                 </StatusPill>
               </div>

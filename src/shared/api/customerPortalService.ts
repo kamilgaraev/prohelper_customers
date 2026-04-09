@@ -9,15 +9,20 @@ import {
   ConversationItem,
   CustomerContractsFilters,
   CustomerContractItem,
-  DashboardMetric,
+  CustomerIssueItem,
+  CustomerRequestItem,
+  CustomerTeamResponse,
+  DashboardData,
   DocumentItem,
+  FinanceSummaryResponse,
   NotificationItem,
+  NotificationSettings,
   PaginatedCustomerContractsResponse,
   ProjectDetails,
   ProjectPreview,
   SupportRequestItem,
   SupportRequestPayload,
-  SupportRequestResult
+  SupportRequestResult,
 } from '@shared/types/dashboard';
 import { PermissionsData } from '@shared/types/permissions';
 
@@ -45,7 +50,11 @@ function isCustomerRole(role: string): role is CustomerRole {
     role === 'customer_owner' ||
     role === 'customer_manager' ||
     role === 'customer_approver' ||
-    role === 'customer_viewer'
+    role === 'customer_viewer' ||
+    role === 'customer_curator' ||
+    role === 'customer_financier' ||
+    role === 'customer_legal' ||
+    role === 'customer_observer'
   );
 }
 
@@ -67,7 +76,7 @@ function normalizeCustomerUser(profile: CustomerProfileResponseData['user']): Cu
     organizationId: profile.organization_id ?? null,
     role: roles[0] ?? 'customer_viewer',
     roles: roles.length > 0 ? roles : ['customer_viewer'],
-    interfaces: Array.from(new Set(interfaces))
+    interfaces: Array.from(new Set(interfaces)),
   };
 }
 
@@ -78,12 +87,12 @@ function sanitizeContractFilters(filters: CustomerContractsFilters = {}): Custom
 }
 
 export const customerPortalService = {
-  async getMetrics(): Promise<DashboardMetric[]> {
+  async getDashboard(): Promise<DashboardData> {
     try {
-      const response = await customerApi.get<ApiEnvelope<{ metrics: DashboardMetric[] }>>('/dashboard');
-      return extractApiData(response.data).metrics;
+      const response = await customerApi.get<ApiEnvelope<DashboardData>>('/dashboard');
+      return extractApiData(response.data);
     } catch (error) {
-      throw new Error(resolveApiMessage(error, 'Не удалось загрузить метрики портала'));
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить обзор customer-кабинета'));
     }
   },
 
@@ -98,10 +107,7 @@ export const customerPortalService = {
 
   async getProject(projectId: number): Promise<ProjectDetails | null> {
     try {
-      const response = await customerApi.get<ApiEnvelope<{ project: ProjectDetails }>>(
-        `/projects/${projectId}`
-      );
-
+      const response = await customerApi.get<ApiEnvelope<{ project: ProjectDetails }>>(`/projects/${projectId}`);
       return extractApiData(response.data).project;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
@@ -112,30 +118,23 @@ export const customerPortalService = {
     }
   },
 
-  async getContracts(
-    filters: CustomerContractsFilters = {}
-  ): Promise<PaginatedCustomerContractsResponse> {
+  async getContracts(filters: CustomerContractsFilters = {}): Promise<PaginatedCustomerContractsResponse> {
     try {
-      const response = await customerApi.get<ApiEnvelope<PaginatedCustomerContractsResponse>>(
-        '/contracts',
-        { params: sanitizeContractFilters(filters) }
-      );
+      const response = await customerApi.get<ApiEnvelope<PaginatedCustomerContractsResponse>>('/contracts', {
+        params: sanitizeContractFilters(filters),
+      });
       return extractApiData(response.data);
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить договоры'));
     }
   },
 
-  async getProjectContracts(
-    projectId: number,
-    filters: CustomerContractsFilters = {}
-  ): Promise<PaginatedCustomerContractsResponse> {
+  async getProjectContracts(projectId: number, filters: CustomerContractsFilters = {}): Promise<PaginatedCustomerContractsResponse> {
     try {
       const response = await customerApi.get<ApiEnvelope<PaginatedCustomerContractsResponse>>(
         `/projects/${projectId}/contracts`,
         { params: sanitizeContractFilters(filters) }
       );
-
       return extractApiData(response.data);
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить договоры проекта'));
@@ -144,10 +143,7 @@ export const customerPortalService = {
 
   async getContract(contractId: number): Promise<CustomerContractItem | null> {
     try {
-      const response = await customerApi.get<ApiEnvelope<{ contract: CustomerContractItem }>>(
-        `/contracts/${contractId}`
-      );
-
+      const response = await customerApi.get<ApiEnvelope<{ contract: CustomerContractItem }>>(`/contracts/${contractId}`);
       return extractApiData(response.data).contract;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
@@ -158,12 +154,35 @@ export const customerPortalService = {
     }
   },
 
+  async getFinanceSummary(): Promise<FinanceSummaryResponse['summary'] | null> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<FinanceSummaryResponse>>('/finance/summary');
+      return extractApiData(response.data).summary;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 403) {
+        return null;
+      }
+
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить финансовую сводку'));
+    }
+  },
+
+  async getProjectFinanceSummary(projectId: number): Promise<FinanceSummaryResponse['summary'] | null> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<FinanceSummaryResponse>>(`/projects/${projectId}/finance`);
+      return extractApiData(response.data).summary;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 403) {
+        return null;
+      }
+
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить финансы проекта'));
+    }
+  },
+
   async getProjectDocuments(projectId: number): Promise<DocumentItem[]> {
     try {
-      const response = await customerApi.get<ApiEnvelope<{ items: DocumentItem[] }>>(
-        `/projects/${projectId}/documents`
-      );
-
+      const response = await customerApi.get<ApiEnvelope<{ items: DocumentItem[] }>>(`/projects/${projectId}/documents`);
       return extractApiData(response.data).items;
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить документы проекта'));
@@ -172,10 +191,7 @@ export const customerPortalService = {
 
   async getProjectApprovals(projectId: number): Promise<ApprovalItem[]> {
     try {
-      const response = await customerApi.get<ApiEnvelope<{ items: ApprovalItem[] }>>(
-        `/projects/${projectId}/approvals`
-      );
-
+      const response = await customerApi.get<ApiEnvelope<{ items: ApprovalItem[] }>>(`/projects/${projectId}/approvals`);
       return extractApiData(response.data).items;
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить согласования проекта'));
@@ -184,13 +200,10 @@ export const customerPortalService = {
 
   async getProjectConversations(projectId: number): Promise<ConversationItem[]> {
     try {
-      const response = await customerApi.get<ApiEnvelope<{ items: ConversationItem[] }>>(
-        `/projects/${projectId}/conversations`
-      );
-
+      const response = await customerApi.get<ApiEnvelope<{ items: ConversationItem[] }>>(`/projects/${projectId}/conversations`);
       return extractApiData(response.data).items;
     } catch (error) {
-      throw new Error(resolveApiMessage(error, 'Не удалось загрузить переписку по проекту'));
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить коммуникации проекта'));
     }
   },
 
@@ -214,9 +227,7 @@ export const customerPortalService = {
 
   async getConversations(): Promise<ConversationItem[]> {
     try {
-      const response = await customerApi.get<ApiEnvelope<{ items: ConversationItem[] }>>(
-        '/conversations'
-      );
+      const response = await customerApi.get<ApiEnvelope<{ items: ConversationItem[] }>>('/conversations');
       return extractApiData(response.data).items;
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить коммуникации'));
@@ -225,20 +236,150 @@ export const customerPortalService = {
 
   async getNotifications(): Promise<NotificationItem[]> {
     try {
-      const response = await customerApi.get<ApiEnvelope<{ items: NotificationItem[] }>>(
-        '/notifications'
-      );
+      const response = await customerApi.get<ApiEnvelope<{ items: NotificationItem[] }>>('/notifications');
       return extractApiData(response.data).items;
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить уведомления'));
     }
   },
 
+  async getIssues(): Promise<CustomerIssueItem[]> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<{ items: CustomerIssueItem[] }>>('/issues');
+      return extractApiData(response.data).items;
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить замечания'));
+    }
+  },
+
+  async createIssue(payload: {
+    title: string;
+    issue_reason: string;
+    body: string;
+    project_id?: number;
+    contract_id?: number;
+    performance_act_id?: number;
+    file_id?: number;
+    due_date?: string;
+    attachments?: Array<{ label?: string; url?: string }>;
+  }): Promise<CustomerIssueItem> {
+    try {
+      const response = await customerApi.post<ApiEnvelope<{ issue: CustomerIssueItem }>>('/issues', payload);
+      return extractApiData(response.data).issue;
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось создать замечание'));
+    }
+  },
+
+  async getIssue(issueId: number): Promise<CustomerIssueItem | null> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<{ issue: CustomerIssueItem }>>(`/issues/${issueId}`);
+      return extractApiData(response.data).issue;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return null;
+      }
+
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить замечание'));
+    }
+  },
+
+  async addIssueComment(issueId: number, payload: { body: string; attachments?: Array<{ label?: string; url?: string }> }): Promise<CustomerIssueItem> {
+    try {
+      const response = await customerApi.post<ApiEnvelope<{ issue: CustomerIssueItem }>>(`/issues/${issueId}/comments`, payload);
+      return extractApiData(response.data).issue;
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось добавить комментарий'));
+    }
+  },
+
+  async resolveIssue(issueId: number, status: 'resolved' | 'rejected'): Promise<CustomerIssueItem> {
+    try {
+      const response = await customerApi.post<ApiEnvelope<{ issue: CustomerIssueItem }>>(`/issues/${issueId}/resolve`, { status });
+      return extractApiData(response.data).issue;
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось обновить статус замечания'));
+    }
+  },
+
+  async getRequests(): Promise<CustomerRequestItem[]> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<{ items: CustomerRequestItem[] }>>('/requests');
+      return extractApiData(response.data).items;
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить запросы'));
+    }
+  },
+
+  async createRequest(payload: {
+    title: string;
+    request_type: string;
+    body: string;
+    project_id?: number;
+    contract_id?: number;
+    due_date?: string;
+    attachments?: Array<{ label?: string; url?: string }>;
+  }): Promise<CustomerRequestItem> {
+    try {
+      const response = await customerApi.post<ApiEnvelope<{ request: CustomerRequestItem }>>('/requests', payload);
+      return extractApiData(response.data).request;
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось создать запрос'));
+    }
+  },
+
+  async getRequest(requestId: number): Promise<CustomerRequestItem | null> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<{ request: CustomerRequestItem }>>(`/requests/${requestId}`);
+      return extractApiData(response.data).request;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return null;
+      }
+
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить запрос'));
+    }
+  },
+
+  async addRequestComment(requestId: number, payload: { body: string; attachments?: Array<{ label?: string; url?: string }> }): Promise<CustomerRequestItem> {
+    try {
+      const response = await customerApi.post<ApiEnvelope<{ request: CustomerRequestItem }>>(`/requests/${requestId}/comments`, payload);
+      return extractApiData(response.data).request;
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось добавить комментарий'));
+    }
+  },
+
+  async getTeam(): Promise<CustomerTeamResponse> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<CustomerTeamResponse>>('/team');
+      return extractApiData(response.data);
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить состав команды'));
+    }
+  },
+
+  async getNotificationSettings(): Promise<NotificationSettings> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<{ settings: NotificationSettings }>>('/notification-settings');
+      return extractApiData(response.data).settings;
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить настройки уведомлений'));
+    }
+  },
+
+  async updateNotificationSettings(payload: NotificationSettings): Promise<NotificationSettings> {
+    try {
+      const response = await customerApi.put<ApiEnvelope<{ settings: NotificationSettings }>>('/notification-settings', payload);
+      return extractApiData(response.data).settings;
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось обновить настройки уведомлений'));
+    }
+  },
+
   async getPermissions(): Promise<PermissionsData> {
     try {
-      const response = await customerApi.get<ApiEnvelope<CustomerPermissionsResponseData>>(
-        '/permissions'
-      );
+      const response = await customerApi.get<ApiEnvelope<CustomerPermissionsResponseData>>('/permissions');
       const data = extractApiData(response.data);
       const interfaces = data.interfaces?.length ? [...data.interfaces] : [];
 
@@ -249,7 +390,7 @@ export const customerPortalService = {
       return {
         permissionsFlat: data.permissions_flat ?? [],
         roles: data.roles ?? [],
-        interfaces: Array.from(new Set(interfaces))
+        interfaces: Array.from(new Set(interfaces)),
       };
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить права доступа'));
@@ -267,11 +408,7 @@ export const customerPortalService = {
 
   async createSupportRequest(payload: SupportRequestPayload): Promise<SupportRequestResult> {
     try {
-      const response = await customerApi.post<ApiEnvelope<{ request: SupportRequestResult }>>(
-        '/support',
-        payload
-      );
-
+      const response = await customerApi.post<ApiEnvelope<{ request: SupportRequestResult }>>('/support', payload);
       return extractApiData(response.data).request;
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось отправить обращение'));
@@ -285,5 +422,5 @@ export const customerPortalService = {
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить историю обращений'));
     }
-  }
+  },
 };

@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 import { customerPortalService } from '@shared/api/customerPortalService';
 import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { SectionHeading } from '@shared/ui/SectionHeading';
@@ -11,7 +13,7 @@ export function DocumentsPage() {
       <SectionHeading
         eyebrow="Documents"
         title="Центр документов заказчика"
-        description="Единая точка доступа к договорам, актам, вложениям и исполнительной документации в customer-safe формате."
+        description="Единая точка доступа к документам по проектам с возможностью сразу открыть замечание по нужному файлу."
       />
       <section className="list-surface">
         {error ? <div className="form-error">{error}</div> : null}
@@ -21,6 +23,9 @@ export function DocumentsPage() {
               <div>
                 <strong>{item.title}</strong>
                 <p>{item.projectName ?? 'Без привязки к проекту'}</p>
+                <p>
+                  <Link to={`/dashboard/issues?project_id=${item.projectId ?? ''}&file_id=${item.id}`}>Создать замечание</Link>
+                </p>
               </div>
               <div className="row-actions">
                 <p className="conversation-preview">{item.category ?? item.type ?? 'Документ'}</p>

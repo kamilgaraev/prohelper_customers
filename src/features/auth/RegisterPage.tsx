@@ -21,11 +21,7 @@ export function RegisterPage() {
       await register({ name, companyName, email, password });
       navigate('/dashboard', { replace: true });
     } catch (registerError) {
-      setError(
-        registerError instanceof Error
-          ? registerError.message
-          : 'Не удалось создать customer-профиль'
-      );
+      setError(registerError instanceof Error ? registerError.message : 'Не удалось создать кабинет заказчика');
     }
   }
 
@@ -35,8 +31,8 @@ export function RegisterPage() {
 
   return (
     <AuthLayout
-      title="Запуск customer-контура"
-      description="Создайте отдельный кабинет заказчика и сразу подготовьте рабочую среду под проекты, документы и коммуникации."
+      title="Создание кабинета заказчика"
+      description="Создайте отдельный кабинет заказчика и подготовьте рабочую среду для проектов, документов и согласований."
       footer={
         <p>
           Уже есть доступ? <Link to="/login">Войти в кабинет</Link>
@@ -70,7 +66,7 @@ export function RegisterPage() {
         </label>
         {error ? <div className="form-error">{error}</div> : null}
         <button type="submit" disabled={isLoading}>
-          {isLoading ? 'Создаём...' : 'Создать кабинет'}
+          {isLoading ? 'Создаем...' : 'Создать кабинет'}
         </button>
       </form>
     </AuthLayout>

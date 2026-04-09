@@ -9,6 +9,17 @@ import { customerNavigation } from '@widgets/layout/navigation';
 export function CustomerShell() {
   const { logout, user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const roleLabels: Record<string, string> = {
+    customer_owner: 'Руководитель',
+    customer_manager: 'Менеджер',
+    customer_approver: 'Согласующий',
+    customer_viewer: 'Наблюдатель',
+    customer_curator: 'Куратор проекта',
+    customer_financier: 'Финансист',
+    customer_legal: 'Юрист',
+    customer_observer: 'Наблюдатель',
+  };
+  const roleLabel = user?.role ? (roleLabels[user.role] ?? 'Участник команды заказчика') : 'Кабинет заказчика';
 
   return (
     <div className="customer-shell">
@@ -16,7 +27,7 @@ export function CustomerShell() {
         <div className="brand-lockup">
           <span className="brand-kicker">Customer portal</span>
           <strong>ProHelper</strong>
-          <span>{user?.companyName ?? 'Customer account'}</span>
+          <span>{user?.companyName ?? 'Кабинет заказчика'}</span>
         </div>
 
         <button
@@ -52,11 +63,11 @@ export function CustomerShell() {
         <header className="customer-topbar">
           <div>
             <span className="topbar-kicker">Заказчик</span>
-            <h2>Рабочий контур проекта</h2>
+            <h2>Рабочее пространство проекта</h2>
           </div>
           <div className="topbar-profile">
             <span>{user?.name}</span>
-            <small>{user?.role.replace('customer_', '').replace('_', ' ')}</small>
+            <small>{roleLabel}</small>
           </div>
         </header>
 

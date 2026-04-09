@@ -3,6 +3,17 @@ import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
 
+const roleLabels: Record<string, string> = {
+  customer_owner: 'Руководитель',
+  customer_manager: 'Менеджер',
+  customer_approver: 'Согласующий',
+  customer_viewer: 'Наблюдатель',
+  customer_curator: 'Куратор проекта',
+  customer_financier: 'Финансист',
+  customer_legal: 'Юрист',
+  customer_observer: 'Наблюдатель',
+};
+
 export function ProfilePage() {
   const { value: user, error } = useAsyncValue(() => customerPortalService.getProfile(), []);
 
@@ -10,8 +21,8 @@ export function ProfilePage() {
     <div className="page-stack">
       <SectionHeading
         eyebrow="Profile"
-        title="Профиль customer-аккаунта"
-        description="Состав аккаунта, роли текущего пользователя и интерфейсы, которые доступны в customer-контуре."
+        title="Профиль пользователя"
+        description="Данные аккаунта, роли текущего пользователя и доступные рабочие разделы."
       />
 
       {error ? <div className="form-error">{error}</div> : null}
@@ -43,7 +54,7 @@ export function ProfilePage() {
 
         <article className="plain-panel">
           <div className="panel-head">
-            <h3>Access model</h3>
+            <h3>Доступ</h3>
           </div>
           <div className="profile-list">
             <div>
@@ -52,14 +63,14 @@ export function ProfilePage() {
             </div>
             <div>
               <span>Главная роль</span>
-              <strong>{user?.role ?? 'customer_viewer'}</strong>
+              <strong>{user?.role ? (roleLabels[user.role] ?? user.role) : 'Наблюдатель'}</strong>
             </div>
             <div>
               <span>Роли</span>
-              <strong>{user?.roles?.join(', ') ?? '—'}</strong>
+              <strong>{user?.roles?.map((role) => roleLabels[role] ?? role).join(', ') ?? '—'}</strong>
             </div>
             <div>
-              <span>Interfaces</span>
+              <span>Разделы</span>
               <StatusPill tone="success">{user?.interfaces?.join(', ') ?? 'customer'}</StatusPill>
             </div>
           </div>
