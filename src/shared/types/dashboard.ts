@@ -86,6 +86,7 @@ export interface CustomerContractsFilters {
   project_id?: number;
   status?: string;
   contractor_id?: number;
+  contractor_search?: string;
   date_from?: string;
   date_to?: string;
   search?: string;

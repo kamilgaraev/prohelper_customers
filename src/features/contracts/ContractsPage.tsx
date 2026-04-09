@@ -19,12 +19,13 @@ function getTone(status: string) {
   return 'neutral';
 }
 
-function parseFilters(searchParams: URLSearchParams): CustomerContractsFilters {
+export function parseFilters(searchParams: URLSearchParams): CustomerContractsFilters {
   return {
     page: Number(searchParams.get('page') ?? 1) || 1,
     per_page: Number(searchParams.get('per_page') ?? 10) || 10,
     project_id: searchParams.get('project_id') ? Number(searchParams.get('project_id')) : undefined,
     contractor_id: searchParams.get('contractor_id') ? Number(searchParams.get('contractor_id')) : undefined,
+    contractor_search: searchParams.get('contractor_search') || undefined,
     status: searchParams.get('status') || undefined,
     date_from: searchParams.get('date_from') || undefined,
     date_to: searchParams.get('date_to') || undefined,
@@ -40,13 +41,25 @@ function formatMoney(value: number | null | undefined): string {
   return `${value.toLocaleString('ru-RU')} ₽`;
 }
 
-function formatParties(contract: CustomerContractItem): string {
+export function formatParties(contract: CustomerContractItem): string {
   const parties = [
     contract.contract_side?.customer_organization?.name ?? contract.customer?.name,
     contract.contract_side?.executor_organization?.name ?? contract.contractor?.name,
   ].filter(Boolean);
 
   return parties.length > 0 ? parties.join(' • ') : 'Стороны договора уточняются';
+}
+
+export function formatRole(role?: string | null): string {
+  if (role === 'customer') {
+    return 'Заказчик';
+  }
+
+  if (role === 'initiator') {
+    return 'Инициатор договора';
+  }
+
+  return 'Роль уточняется';
 }
 
 export function ContractsPage() {
@@ -140,17 +153,16 @@ export function ContractsPage() {
             </select>
           </label>
           <label>
-            <span>ID исполнителя</span>
+            <span>Исполнитель</span>
             <input
-              type="number"
-              value={draftFilters.contractor_id ?? ''}
+              value={draftFilters.contractor_search ?? ''}
               onChange={(event) =>
                 setDraftFilters((prev) => ({
                   ...prev,
-                  contractor_id: event.target.value ? Number(event.target.value) : undefined,
+                  contractor_search: event.target.value || undefined,
                 }))
               }
-              placeholder="Например, 42"
+              placeholder="Название исполнителя"
             />
           </label>
           <label>
@@ -205,6 +217,7 @@ export function ContractsPage() {
                   <p>{contract.subject ?? 'Предмет договора уточняется'}</p>
                   <p>{contract.contract_side?.display_label ?? 'Договор по проекту'}</p>
                   <p>{formatParties(contract)}</p>
+                  <p>Ваша роль: {formatRole(contract.current_organization_role)}</p>
                   <p>{contract.project?.name ?? 'Без проекта'}</p>
                 </div>
                 <div className="row-actions">

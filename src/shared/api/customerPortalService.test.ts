@@ -66,6 +66,7 @@ describe('customerPortalService contracts flow', () => {
       page: 1,
       per_page: 5,
       project_id: 7,
+      contractor_search: 'Заказ',
       search: 'C-002',
       status: '',
       contractor_id: undefined,
@@ -76,6 +77,7 @@ describe('customerPortalService contracts flow', () => {
         page: 1,
         per_page: 5,
         project_id: 7,
+        contractor_search: 'Заказ',
         search: 'C-002',
       },
     });
