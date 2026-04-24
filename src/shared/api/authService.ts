@@ -39,6 +39,7 @@ interface RegisterResponseData {
   status: 'verification_required';
   email: string;
   can_enter_portal?: boolean;
+  available_interfaces?: string[];
   user?: {
     id?: number;
     name: string;
@@ -254,6 +255,7 @@ export const authService = {
         status: pendingState.status,
         email: pendingState.email,
         canEnterPortal: pendingState.canEnterPortal,
+        availableInterfaces: data.available_interfaces ?? ['customer'],
         user: pendingState.user,
         organization: data.organization
       };

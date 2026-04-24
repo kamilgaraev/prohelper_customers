@@ -72,7 +72,7 @@ describe('authService', () => {
             organization_id: 7,
             organization_name: 'ООО Заказчик',
             roles: ['customer_curator'],
-            interfaces: ['customer']
+            interfaces: ['customer', 'admin']
           }
         }
       }
@@ -98,6 +98,7 @@ describe('authService', () => {
     if ('token' in result) {
       expect(result.user.role).toBe('customer_curator');
       expect(result.user.roles).toContain('customer_curator');
+      expect(result.user.interfaces).toContain('admin');
       expect(result.emailVerified).toBe(true);
     }
   });
@@ -126,5 +127,39 @@ describe('authService', () => {
       expect(result.status).toBe('verification_required');
       expect(result.email).toBe('pending@example.com');
     }
+  });
+
+  it('returns expanded interfaces after customer registration', async () => {
+    mockedAxiosPost.mockResolvedValueOnce({
+      data: {
+        success: true,
+        data: {
+          status: 'verification_required',
+          email: 'new-customer@example.com',
+          can_enter_portal: false,
+          available_interfaces: ['customer', 'admin'],
+          user: {
+            id: 44,
+            name: 'Новый заказчик',
+            email: 'new-customer@example.com'
+          },
+          organization: {
+            id: 15,
+            name: 'ООО Новый заказчик'
+          }
+        }
+      }
+    });
+
+    const result = await authService.register({
+      name: 'Новый заказчик',
+      companyName: 'ООО Новый заказчик',
+      email: 'new-customer@example.com',
+      password: 'Secret123'
+    });
+
+    expect(result.status).toBe('verification_required');
+    expect(result.availableInterfaces).toContain('customer');
+    expect(result.availableInterfaces).toContain('admin');
   });
 });

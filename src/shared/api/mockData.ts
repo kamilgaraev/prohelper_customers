@@ -9,7 +9,7 @@ export const mockCustomerUser: CustomerUser = {
   companyName: 'Р“Рљ Р—Р°РєР°Р·С‡РёРє Р”РµРІРµР»РѕРїРјРµРЅС‚',
   role: 'customer_owner',
   roles: ['customer_owner'],
-  interfaces: ['customer']
+  interfaces: ['customer', 'admin']
 };
 
 export const mockMetrics: DashboardMetric[] = [

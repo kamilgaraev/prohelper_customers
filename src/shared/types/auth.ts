@@ -71,6 +71,7 @@ export interface OnboardingResult {
   status: OnboardingStatus;
   email: string;
   canEnterPortal: boolean;
+  availableInterfaces?: string[];
   user?: PendingVerificationUser;
   organization?: {
     id: number;

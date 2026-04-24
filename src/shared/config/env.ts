@@ -1,4 +1,6 @@
 export const env = {
+  adminAppUrl:
+    import.meta.env.VITE_ADMIN_APP_URL ?? 'https://app.prohelper.pro',
   customerApiUrl:
     import.meta.env.VITE_CUSTOMER_API_URL ?? 'https://api.prohelper.pro/api/v1/customer',
   customerAuthUrl:

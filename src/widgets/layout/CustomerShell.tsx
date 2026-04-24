@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { ArrowUpRight, LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { NavLink, Outlet } from 'react-router-dom';
 
 import { useAuth } from '@shared/contexts/AuthContext';
+import { getAdminEntryUrl, hasAdminInterface } from '@shared/utils/interfaceAccess';
 import { customerNavigation } from '@widgets/layout/navigation';
 
 export function CustomerShell() {
@@ -20,6 +21,7 @@ export function CustomerShell() {
     customer_observer: 'Наблюдатель',
   };
   const roleLabel = user?.role ? (roleLabels[user.role] ?? 'Участник команды заказчика') : 'Кабинет заказчика';
+  const canOpenAdmin = hasAdminInterface(user?.interfaces);
 
   return (
     <div className="customer-shell">
@@ -65,9 +67,17 @@ export function CustomerShell() {
             <span className="topbar-kicker">Заказчик</span>
             <h2>Рабочее пространство проекта</h2>
           </div>
-          <div className="topbar-profile">
-            <span>{user?.name}</span>
-            <small>{roleLabel}</small>
+          <div className="topbar-actions">
+            {canOpenAdmin ? (
+              <a className="admin-entry-button" href={getAdminEntryUrl()}>
+                <span>Перейти в админку</span>
+                <ArrowUpRight size={16} />
+              </a>
+            ) : null}
+            <div className="topbar-profile">
+              <span>{user?.name}</span>
+              <small>{roleLabel}</small>
+            </div>
           </div>
         </header>
 

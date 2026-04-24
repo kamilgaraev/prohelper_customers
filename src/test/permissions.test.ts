@@ -7,6 +7,10 @@ describe('customer interface bootstrap', () => {
     expect(mockCustomerUser.interfaces).toContain('customer');
   });
 
+  it('contains admin interface in mock user', () => {
+    expect(mockCustomerUser.interfaces).toContain('admin');
+  });
+
   it('keeps customer role namespaced', () => {
     expect(mockCustomerUser.role.startsWith('customer_')).toBe(true);
   });

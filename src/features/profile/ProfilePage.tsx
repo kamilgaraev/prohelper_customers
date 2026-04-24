@@ -1,5 +1,8 @@
+import { ArrowUpRight } from 'lucide-react';
+
 import { customerPortalService } from '@shared/api/customerPortalService';
 import { useAsyncValue } from '@shared/hooks/useAsyncValue';
+import { getAdminEntryUrl, hasAdminInterface } from '@shared/utils/interfaceAccess';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
 
@@ -16,6 +19,7 @@ const roleLabels: Record<string, string> = {
 
 export function ProfilePage() {
   const { value: user, error } = useAsyncValue(() => customerPortalService.getProfile(), []);
+  const canOpenAdmin = hasAdminInterface(user?.interfaces);
 
   return (
     <div className="page-stack">
@@ -74,6 +78,13 @@ export function ProfilePage() {
               <StatusPill tone="success">{user?.interfaces?.join(', ') ?? 'customer'}</StatusPill>
             </div>
           </div>
+
+          {canOpenAdmin ? (
+            <a className="profile-admin-entry" href={getAdminEntryUrl()}>
+              <span>Открыть админку</span>
+              <ArrowUpRight size={16} />
+            </a>
+          ) : null}
         </article>
       </section>
     </div>
