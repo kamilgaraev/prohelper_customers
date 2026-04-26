@@ -27,8 +27,11 @@ export function CustomerShell() {
     <div className="customer-shell">
       <aside className={`customer-sidebar${collapsed ? ' customer-sidebar--collapsed' : ''}`}>
         <div className="brand-lockup">
+          <div className="brand-main">
+            <img className="brand-logo" src="/logo-white.svg" alt="" />
+            <strong>ProHelper</strong>
+          </div>
           <span className="brand-kicker">Customer portal</span>
-          <strong>ProHelper</strong>
           <span>{user?.companyName ?? 'Кабинет заказчика'}</span>
         </div>
 

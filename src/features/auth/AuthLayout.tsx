@@ -11,7 +11,10 @@ export function AuthLayout({ title, description, children, footer }: AuthLayoutP
   return (
     <div className="auth-shell">
       <div className="auth-poster">
-        <span className="auth-kicker">ProHelper Customers</span>
+        <div className="auth-brand">
+          <img className="auth-logo" src="/logo-white.svg" alt="" />
+          <strong>ProHelper</strong>
+        </div>
         <h1>{title}</h1>
         <p>{description}</p>
         <div className="auth-grid">
