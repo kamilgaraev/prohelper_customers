@@ -142,4 +142,52 @@ describe('customerPortalService contracts flow', () => {
     expect(response.meta.total).toBe(11);
     expect(response.items[0].number).toBe('C-003');
   });
+
+  it('normalizes empty customer portal payloads without mock fallbacks', async () => {
+    mockedGet
+      .mockResolvedValueOnce({
+        data: {
+          success: true,
+          data: {},
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          success: true,
+          data: {},
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          success: true,
+          data: {},
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          success: true,
+          data: {},
+        },
+      });
+
+    await expect(customerPortalService.getProjects()).resolves.toEqual([]);
+    await expect(customerPortalService.getApprovals()).resolves.toEqual([]);
+    await expect(customerPortalService.getConversations()).resolves.toEqual([]);
+
+    const dashboard = await customerPortalService.getDashboard();
+
+    expect(mockedGet).toHaveBeenNthCalledWith(1, '/projects');
+    expect(mockedGet).toHaveBeenNthCalledWith(2, '/approvals');
+    expect(mockedGet).toHaveBeenNthCalledWith(3, '/conversations');
+    expect(mockedGet).toHaveBeenNthCalledWith(4, '/dashboard');
+    expect(dashboard.metrics).toEqual([]);
+    expect(dashboard.attention_feed).toEqual({
+      contracts: [],
+      approvals: [],
+      issues: [],
+      requests: [],
+    });
+    expect(dashboard.project_risks).toEqual([]);
+    expect(dashboard.recent_changes).toEqual([]);
+  });
 });

@@ -78,6 +78,29 @@ interface RequestFilters {
   due_state?: 'overdue';
 }
 
+type DashboardResponseData = Partial<Omit<DashboardData, 'attention_feed' | 'discipline_summary'>> & {
+  attention_feed?: Partial<DashboardData['attention_feed']> | null;
+  discipline_summary?: Partial<DisciplineSummary> | null;
+};
+
+interface ProjectListResponse {
+  projects?: ProjectPreview[];
+  items?: ProjectPreview[];
+}
+
+interface ItemsResponse<T> {
+  items?: T[];
+}
+
+const emptyDisciplineSummary: DisciplineSummary = {
+  issue_response_hours: null,
+  approval_cycle_hours: 0,
+  rework_count: 0,
+  overdue_actions_count: 0,
+  stalled_items_count: 0,
+  request_response_hours: null,
+};
+
 function isCustomerRole(role: string): role is CustomerRole {
   return (
     role === 'customer_owner' ||
@@ -123,11 +146,40 @@ function sanitizeContractFilters(filters: CustomerContractsFilters = {}): Custom
   return sanitizeParams(filters) as CustomerContractsFilters;
 }
 
+function toList<T>(items: T[] | null | undefined): T[] {
+  return Array.isArray(items) ? items : [];
+}
+
+function extractItems<T>(payload: ItemsResponse<T>): T[] {
+  return toList(payload.items);
+}
+
+function normalizeDashboardData(payload: DashboardResponseData): DashboardData {
+  const attentionFeed = payload.attention_feed ?? {};
+
+  return {
+    metrics: toList(payload.metrics),
+    attention_feed: {
+      contracts: toList(attentionFeed.contracts),
+      approvals: toList(attentionFeed.approvals),
+      issues: toList(attentionFeed.issues),
+      requests: toList(attentionFeed.requests),
+    },
+    finance_summary: payload.finance_summary ?? null,
+    project_risks: toList(payload.project_risks),
+    recent_changes: toList(payload.recent_changes),
+    discipline_summary: {
+      ...emptyDisciplineSummary,
+      ...(payload.discipline_summary ?? {}),
+    },
+  };
+}
+
 export const customerPortalService = {
   async getDashboard(): Promise<DashboardData> {
     try {
-      const response = await customerApi.get<ApiEnvelope<DashboardData>>('/dashboard');
-      return extractApiData(response.data);
+      const response = await customerApi.get<ApiEnvelope<DashboardResponseData>>('/dashboard');
+      return normalizeDashboardData(extractApiData(response.data));
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить обзор кабинета заказчика'));
     }
@@ -135,8 +187,9 @@ export const customerPortalService = {
 
   async getProjects(): Promise<ProjectPreview[]> {
     try {
-      const response = await customerApi.get<ApiEnvelope<{ projects: ProjectPreview[] }>>('/projects');
-      return extractApiData(response.data).projects;
+      const response = await customerApi.get<ApiEnvelope<ProjectListResponse>>('/projects');
+      const data = extractApiData(response.data);
+      return toList(data.projects ?? data.items);
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить проекты'));
     }
@@ -379,8 +432,8 @@ export const customerPortalService = {
 
   async getProjectDocuments(projectId: number): Promise<DocumentItem[]> {
     try {
-      const response = await customerApi.get<ApiEnvelope<{ items: DocumentItem[] }>>(`/projects/${projectId}/documents`);
-      return extractApiData(response.data).items;
+      const response = await customerApi.get<ApiEnvelope<ItemsResponse<DocumentItem>>>(`/projects/${projectId}/documents`);
+      return extractItems(extractApiData(response.data));
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить документы проекта'));
     }
@@ -388,8 +441,8 @@ export const customerPortalService = {
 
   async getProjectApprovals(projectId: number): Promise<ApprovalItem[]> {
     try {
-      const response = await customerApi.get<ApiEnvelope<{ items: ApprovalItem[] }>>(`/projects/${projectId}/approvals`);
-      return extractApiData(response.data).items;
+      const response = await customerApi.get<ApiEnvelope<ItemsResponse<ApprovalItem>>>(`/projects/${projectId}/approvals`);
+      return extractItems(extractApiData(response.data));
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить согласования проекта'));
     }
@@ -397,8 +450,8 @@ export const customerPortalService = {
 
   async getProjectConversations(projectId: number): Promise<ConversationItem[]> {
     try {
-      const response = await customerApi.get<ApiEnvelope<{ items: ConversationItem[] }>>(`/projects/${projectId}/conversations`);
-      return extractApiData(response.data).items;
+      const response = await customerApi.get<ApiEnvelope<ItemsResponse<ConversationItem>>>(`/projects/${projectId}/conversations`);
+      return extractItems(extractApiData(response.data));
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить коммуникации проекта'));
     }
@@ -406,8 +459,8 @@ export const customerPortalService = {
 
   async getDocuments(): Promise<DocumentItem[]> {
     try {
-      const response = await customerApi.get<ApiEnvelope<{ items: DocumentItem[] }>>('/documents');
-      return extractApiData(response.data).items;
+      const response = await customerApi.get<ApiEnvelope<ItemsResponse<DocumentItem>>>('/documents');
+      return extractItems(extractApiData(response.data));
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить документы'));
     }
@@ -415,8 +468,8 @@ export const customerPortalService = {
 
   async getApprovals(): Promise<ApprovalItem[]> {
     try {
-      const response = await customerApi.get<ApiEnvelope<{ items: ApprovalItem[] }>>('/approvals');
-      return extractApiData(response.data).items;
+      const response = await customerApi.get<ApiEnvelope<ItemsResponse<ApprovalItem>>>('/approvals');
+      return extractItems(extractApiData(response.data));
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить согласования'));
     }
@@ -424,8 +477,8 @@ export const customerPortalService = {
 
   async getConversations(): Promise<ConversationItem[]> {
     try {
-      const response = await customerApi.get<ApiEnvelope<{ items: ConversationItem[] }>>('/conversations');
-      return extractApiData(response.data).items;
+      const response = await customerApi.get<ApiEnvelope<ItemsResponse<ConversationItem>>>('/conversations');
+      return extractItems(extractApiData(response.data));
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить коммуникации'));
     }

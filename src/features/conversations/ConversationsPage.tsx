@@ -3,6 +3,8 @@ import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
 
+export const CONVERSATIONS_EMPTY_TEXT = 'По доступным проектам пока нет активных сообщений.';
+
 export function ConversationsPage() {
   const { value: conversations, error } = useAsyncValue(
     () => customerPortalService.getConversations(),
@@ -14,7 +16,7 @@ export function ConversationsPage() {
       <SectionHeading
         eyebrow="Conversations"
         title="Проектные коммуникации"
-        description="Экран уже подключен к реальному customer endpoint. Как только в backend появится отдельная customer/project-модель переписки, лента начнет заполняться без дополнительных изменений в UI."
+        description="Здесь собраны сообщения и обсуждения по проектам, доступным вашей организации."
       />
       <section className="list-surface">
         {error ? <div className="form-error">{error}</div> : null}
@@ -34,7 +36,7 @@ export function ConversationsPage() {
             </article>
           ))
         ) : (
-          <p className="empty-state">Отдельная customer-переписка по проектам пока не опубликована backend-модулем.</p>
+          <p className="empty-state">{CONVERSATIONS_EMPTY_TEXT}</p>
         )}
       </section>
     </div>

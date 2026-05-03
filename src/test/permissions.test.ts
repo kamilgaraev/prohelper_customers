@@ -1,21 +1,32 @@
 import { describe, expect, it } from 'vitest';
 
-import { mockCustomerUser } from '@shared/api/mockData';
+import { CustomerUser } from '@shared/types/auth';
+
+const customerUser: CustomerUser = {
+  id: 101,
+  name: 'Тестовый заказчик',
+  email: 'customer@prohelper.pro',
+  accountType: 'organization',
+  companyName: 'Тестовая организация заказчика',
+  role: 'customer_owner',
+  roles: ['customer_owner'],
+  interfaces: ['customer', 'admin'],
+};
 
 describe('customer interface bootstrap', () => {
   it('contains customer interface in mock user', () => {
-    expect(mockCustomerUser.interfaces).toContain('customer');
+    expect(customerUser.interfaces).toContain('customer');
   });
 
   it('contains admin interface in mock user', () => {
-    expect(mockCustomerUser.interfaces).toContain('admin');
+    expect(customerUser.interfaces).toContain('admin');
   });
 
   it('keeps customer role namespaced', () => {
-    expect(mockCustomerUser.role.startsWith('customer_')).toBe(true);
+    expect(customerUser.role.startsWith('customer_')).toBe(true);
   });
 
   it('stores explicit customer roles list', () => {
-    expect(mockCustomerUser.roles).toContain('customer_owner');
+    expect(customerUser.roles).toContain('customer_owner');
   });
 });
