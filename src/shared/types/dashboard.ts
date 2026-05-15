@@ -10,6 +10,83 @@ export interface LinkedProjectSummary {
   location?: string | null;
 }
 
+export interface CustomerHandoverProblemFlag {
+  key?: string;
+  code?: string;
+  severity: 'info' | 'warning' | 'critical' | 'blocker';
+  label?: string;
+  message?: string;
+  count?: number;
+}
+
+export interface CustomerHandoverReference {
+  id: number;
+  name: string;
+}
+
+export interface CustomerHandoverLocation {
+  id: number;
+  project_id: number;
+  parent_id?: number | null;
+  location_type: string;
+  name: string;
+  code?: string | null;
+  path?: string | null;
+  level: number;
+}
+
+export interface CustomerHandoverFinding {
+  id: number;
+  acceptance_scope_id: number;
+  acceptance_session_id: number;
+  quality_defect_id?: number | null;
+  title: string;
+  description?: string | null;
+  severity: 'minor' | 'major' | 'critical';
+  status: 'open' | 'resolved';
+  resolution_comment?: string | null;
+  resolved_at?: string | null;
+}
+
+export interface CustomerHandoverPackageDocument {
+  id: number;
+  title: string;
+  document_type?: string | null;
+  is_required: boolean;
+  status: 'missing' | 'draft' | 'approved';
+  external_url?: string | null;
+  approved_at?: string | null;
+}
+
+export interface CustomerHandoverScope {
+  id: number;
+  project_id: number;
+  project_location_id?: number | null;
+  title: string;
+  description?: string | null;
+  status: string;
+  planned_acceptance_date?: string | null;
+  accepted_at?: string | null;
+  handed_over_at?: string | null;
+  reopened_at?: string | null;
+  workflow_summary?: {
+    status: string;
+    available_actions: string[];
+    problem_flags: CustomerHandoverProblemFlag[];
+  };
+  problem_flags?: CustomerHandoverProblemFlag[];
+  project?: CustomerHandoverReference | null;
+  location?: CustomerHandoverLocation | null;
+  findings: CustomerHandoverFinding[];
+  handover_package?: {
+    id: number;
+    acceptance_scope_id: number;
+    title: string;
+    status: string;
+    documents: CustomerHandoverPackageDocument[];
+  } | null;
+}
+
 export interface RelatedEntitySummary {
   type: string;
   id: number;
@@ -338,6 +415,35 @@ export interface ApprovalItem {
   amount?: string | null;
 }
 
+export interface CustomerChangeImpact {
+  cost_delta?: string | number | null;
+  schedule_delta_days?: number | null;
+  requires_customer_approval?: boolean;
+}
+
+export interface CustomerChangeApproval {
+  id?: number;
+  status: string;
+  comment?: string | null;
+  decided_at?: string | null;
+}
+
+export interface CustomerChangeRequestItem {
+  id: number;
+  project_id?: number | null;
+  change_number: string;
+  title: string;
+  status: string;
+  impact?: CustomerChangeImpact | null;
+  customer_approval?: CustomerChangeApproval | null;
+  problem_flags?: Array<{
+    code: string;
+    severity: string;
+    message: string;
+    schedule_delta_days?: number;
+  }>;
+}
+
 export interface ConversationItem {
   id: number;
   title: string;
@@ -465,6 +571,103 @@ export interface CustomerIssueItem {
   overdue_since?: string | null;
   created_at: string | null;
   updated_at: string | null;
+}
+
+export interface QualityDefectWorkflowSummary {
+  stage?: string;
+  stage_label?: string;
+  status?: string;
+  status_label?: string;
+  next_action?: string | null;
+  next_action_label?: string | null;
+  blockers?: string[];
+  warnings?: string[];
+  meta?: {
+    overdue?: boolean;
+  };
+}
+
+export interface QualityDefectProblemFlag {
+  code: string;
+  severity: 'blocker' | 'warning' | string;
+  message: string;
+  target?: string | null;
+  target_id?: number | null;
+}
+
+export interface QualityDefectItem {
+  id: number;
+  defect_number: string;
+  title: string;
+  description?: string | null;
+  severity: string;
+  severity_label?: string | null;
+  status: string;
+  status_label?: string | null;
+  location_name?: string | null;
+  due_date?: string | null;
+  inspection_required: boolean;
+  project?: {
+    id: number;
+    name: string;
+  } | null;
+  contractor?: {
+    id: number;
+    name: string;
+  } | null;
+  assigned_user?: WorkflowAssignee | null;
+  workflow_summary?: QualityDefectWorkflowSummary | null;
+  problem_flags?: QualityDefectProblemFlag[];
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface CustomerExecutiveDocumentVersion {
+  id: number;
+  document_id: number;
+  version_number: string;
+  file_url: string;
+  uploaded_at?: string | null;
+}
+
+export interface CustomerExecutiveDocument {
+  id: number;
+  document_type: string;
+  document_type_label: string;
+  title: string;
+  status: string;
+  status_label: string;
+  section_name?: string | null;
+  work_type_name?: string | null;
+  inspection_date?: string | null;
+  versions?: CustomerExecutiveDocumentVersion[];
+}
+
+export interface CustomerExecutiveDocumentSet {
+  id: number;
+  project_id: number;
+  set_number: string;
+  title: string;
+  status: string;
+  status_label: string;
+  stage_name?: string | null;
+  zone_name?: string | null;
+  transmitted_at?: string | null;
+  planned_transmittal_date?: string | null;
+  project?: {
+    id: number;
+    name: string;
+  } | null;
+  documents?: CustomerExecutiveDocument[];
+  transmittal?: {
+    id: number;
+    transmittal_number: string;
+    acknowledged?: boolean;
+    comment?: string | null;
+    acknowledgement_comment?: string | null;
+    transmitted_at?: string | null;
+    acknowledged_at?: string | null;
+  } | null;
 }
 
 export interface CustomerRequestItem {

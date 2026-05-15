@@ -640,6 +640,66 @@ p {
   box-shadow: none;
 }
 
+.text-button {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--primary-deep);
+  box-shadow: none;
+  font-weight: 700;
+}
+
+.text-button:hover {
+  box-shadow: none;
+}
+
+.primary-button {
+  white-space: nowrap;
+}
+
+.secondary-button {
+  background: rgba(61, 45, 28, 0.08);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(20, 16, 10, 0.44);
+}
+
+.modal-card {
+  width: min(34rem, 100%);
+  display: grid;
+  gap: 1rem;
+  padding: 1.4rem;
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: 0 28px 70px rgba(20, 16, 10, 0.24);
+}
+
+.modal-card label {
+  display: grid;
+  gap: 0.55rem;
+  color: var(--muted);
+}
+
+.modal-card textarea {
+  min-height: 8rem;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .conversation-preview {
   max-width: 28rem;
   text-align: right;

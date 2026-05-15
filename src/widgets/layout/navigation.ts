@@ -1,6 +1,8 @@
 import {
   Bell,
   CheckCheck,
+  ClipboardCheck,
+  ClipboardList,
   CircleUserRound,
   FileSignature,
   Files,
@@ -20,6 +22,8 @@ export const customerNavigation = [
   { to: '/dashboard/finance', label: 'Финансы', icon: Landmark },
   { to: '/dashboard/risks', label: 'Риски', icon: ShieldAlert },
   { to: '/dashboard/issues', label: 'Замечания', icon: ShieldAlert },
+  { to: '/dashboard/quality-defects', label: 'Дефекты качества', icon: ClipboardCheck },
+  { to: '/dashboard/handover', label: 'Приемка зон', icon: ClipboardList },
   { to: '/dashboard/requests', label: 'Запросы', icon: FolderGit2 },
   { to: '/dashboard/projects', label: 'Проекты', icon: FolderKanban },
   { to: '/dashboard/documents', label: 'Документы', icon: Files },

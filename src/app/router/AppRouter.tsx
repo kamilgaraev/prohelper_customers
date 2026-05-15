@@ -14,11 +14,13 @@ import { ConversationsPage } from '@features/conversations/ConversationsPage';
 import { DashboardPage } from '@features/dashboard/DashboardPage';
 import { DocumentsPage } from '@features/documents/DocumentsPage';
 import { FinancePage } from '@features/finance/FinancePage';
+import { HandoverPage } from '@features/handover/HandoverPage';
 import { IssuesPage } from '@features/issues/IssuesPage';
 import { NotificationsPage } from '@features/notifications/NotificationsPage';
 import { CreateProjectPage } from '@features/projects/CreateProjectPage';
 import { ProjectDetailsPage } from '@features/projects/ProjectDetailsPage';
 import { ProjectsPage } from '@features/projects/ProjectsPage';
+import { QualityDefectsPage } from '@features/quality/QualityDefectsPage';
 import { RequestsPage } from '@features/requests/RequestsPage';
 import { RisksPage } from '@features/risks/RisksPage';
 import { ProfilePage } from '@features/profile/ProfilePage';
@@ -52,6 +54,8 @@ export function AppRouter() {
         <Route path="finance" element={<FinancePage />} />
         <Route path="risks" element={<RisksPage />} />
         <Route path="issues" element={<IssuesPage />} />
+        <Route path="quality-defects" element={<QualityDefectsPage />} />
+        <Route path="handover" element={<HandoverPage />} />
         <Route path="requests" element={<RequestsPage />} />
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="projects/new" element={<CreateProjectPage />} />

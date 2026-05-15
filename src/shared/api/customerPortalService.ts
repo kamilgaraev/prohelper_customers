@@ -7,8 +7,11 @@ import { CustomerRole, CustomerUser } from '@shared/types/auth';
 import {
   ApprovalItem,
   ConversationItem,
+  CustomerChangeRequestItem,
   CustomerContractsFilters,
   CustomerContractItem,
+  CustomerExecutiveDocumentSet,
+  CustomerHandoverScope,
   CustomerIssueItem,
   CustomerOrganizationSearchItem,
   CustomerProjectParticipantsResponse,
@@ -29,6 +32,7 @@ import {
   ProjectRiskItem,
   ProjectTimelineItem,
   ProjectWorkspaceResponse,
+  QualityDefectItem,
   SupportRequestItem,
   SupportRequestPayload,
   SupportRequestResult,
@@ -71,11 +75,22 @@ interface IssueFilters {
   due_state?: 'overdue';
 }
 
+interface QualityDefectFilters {
+  project_id?: number;
+  status?: string;
+  severity?: string;
+  overdue?: boolean;
+}
+
 interface RequestFilters {
   project_id?: number;
   status?: string;
   request_type?: string;
   due_state?: 'overdue';
+}
+
+interface HandoverFilters {
+  project_id?: number;
 }
 
 type DashboardResponseData = Partial<Omit<DashboardData, 'attention_feed' | 'discipline_summary'>> & {
@@ -466,12 +481,102 @@ export const customerPortalService = {
     }
   },
 
+  async getExecutiveDocumentSets(): Promise<CustomerExecutiveDocumentSet[]> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<CustomerExecutiveDocumentSet[]>>('/executive-documentation/sets');
+      return toList(extractApiData(response.data));
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить исполнительную документацию'));
+    }
+  },
+
+  async addExecutiveDocumentRemark(
+    documentId: number,
+    payload: { body: string; severity?: 'minor' | 'major' | 'critical' }
+  ): Promise<void> {
+    try {
+      await customerApi.post<ApiEnvelope<unknown>>(`/executive-documentation/documents/${documentId}/remarks`, payload);
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось добавить замечание к исполнительной документации'));
+    }
+  },
+
+  async acknowledgeExecutiveDocumentSet(
+    setId: number,
+    payload: { comment?: string } = {}
+  ): Promise<CustomerExecutiveDocumentSet> {
+    try {
+      const response = await customerApi.post<ApiEnvelope<CustomerExecutiveDocumentSet>>(
+        `/executive-documentation/sets/${setId}/acknowledge`,
+        payload
+      );
+      return extractApiData(response.data);
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось подтвердить получение исполнительной документации'));
+    }
+  },
+
   async getApprovals(): Promise<ApprovalItem[]> {
     try {
       const response = await customerApi.get<ApiEnvelope<ItemsResponse<ApprovalItem>>>('/approvals');
       return extractItems(extractApiData(response.data));
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить согласования'));
+    }
+  },
+
+  async getChangeApprovals(): Promise<CustomerChangeRequestItem[]> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<ItemsResponse<CustomerChangeRequestItem>>>('/change-management/changes');
+      return extractItems(extractApiData(response.data));
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить изменения на согласование'));
+    }
+  },
+
+  async approveChangeRequest(changeId: number, payload: { comment?: string } = {}): Promise<CustomerChangeRequestItem> {
+    try {
+      const response = await customerApi.post<ApiEnvelope<CustomerChangeRequestItem>>(
+        `/change-management/changes/${changeId}/approve`,
+        payload
+      );
+      return extractApiData(response.data);
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось согласовать изменение'));
+    }
+  },
+
+  async getHandoverScopes(filters: HandoverFilters = {}): Promise<CustomerHandoverScope[]> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<CustomerHandoverScope[]>>('/handover-acceptance/scopes', {
+        params: sanitizeParams(filters),
+      });
+      return toList(extractApiData(response.data));
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить приемку зон'));
+    }
+  },
+
+  async signHandoverScope(scopeId: number): Promise<CustomerHandoverScope> {
+    try {
+      const response = await customerApi.post<ApiEnvelope<CustomerHandoverScope>>(
+        `/handover-acceptance/scopes/${scopeId}/handover`
+      );
+      return extractApiData(response.data);
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось подтвердить передачу зоны'));
+    }
+  },
+
+  async rejectHandoverScope(scopeId: number, payload: { reason: string }): Promise<CustomerHandoverScope> {
+    try {
+      const response = await customerApi.post<ApiEnvelope<CustomerHandoverScope>>(
+        `/handover-acceptance/scopes/${scopeId}/reject`,
+        payload
+      );
+      return extractApiData(response.data);
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось вернуть зону на доработку'));
     }
   },
 
@@ -553,6 +658,30 @@ export const customerPortalService = {
       return extractApiData(response.data).issue;
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось обновить статус замечания'));
+    }
+  },
+
+  async getQualityDefects(filters: QualityDefectFilters = {}): Promise<QualityDefectItem[]> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<QualityDefectItem[]>>('/quality-control/defects', {
+        params: sanitizeParams(filters),
+      });
+      return toList(extractApiData(response.data));
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить дефекты качества'));
+    }
+  },
+
+  async getQualityDefect(defectId: number): Promise<QualityDefectItem | null> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<QualityDefectItem>>(`/quality-control/defects/${defectId}`);
+      return extractApiData(response.data);
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return null;
+      }
+
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить дефект качества'));
     }
   },
 
