@@ -41,7 +41,7 @@ export function LoginPage() {
 
   return (
     <AuthLayout
-      title="Кабинет заказчика ProHelper"
+      title="Кабинет заказчика МОСТ"
       description="Контролируйте проекты, документы, согласования и ключевые события в одном рабочем пространстве."
       footer={
         <p>

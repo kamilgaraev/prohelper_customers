@@ -29,7 +29,7 @@ export function CustomerShell() {
         <div className="brand-lockup">
           <div className="brand-main">
             <img className="brand-logo" src="/logo-white.svg" alt="" />
-            <strong>ProHelper</strong>
+            <strong>МОСТ</strong>
           </div>
           <span className="brand-kicker">Customer portal</span>
           <span>{user?.companyName ?? 'Кабинет заказчика'}</span>

@@ -13,7 +13,7 @@ export function AuthLayout({ title, description, children, footer }: AuthLayoutP
       <div className="auth-poster">
         <div className="auth-brand">
           <img className="auth-logo" src="/logo-white.svg" alt="" />
-          <strong>ProHelper</strong>
+          <strong>МОСТ</strong>
         </div>
         <h1>{title}</h1>
         <p>{description}</p>

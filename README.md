@@ -1,6 +1,6 @@
 # prohelper_customers
 
-Customer portal for ProHelper.
+Customer portal for МОСТ.
 
 ## Scripts
 
