@@ -5,7 +5,7 @@ import { CustomerUser } from '@shared/types/auth';
 const customerUser: CustomerUser = {
   id: 101,
   name: 'Тестовый заказчик',
-  email: 'customer@prohelper.pro',
+  email: 'customer@1мост.рф',
   accountType: 'organization',
   companyName: 'Тестовая организация заказчика',
   role: 'customer_owner',
