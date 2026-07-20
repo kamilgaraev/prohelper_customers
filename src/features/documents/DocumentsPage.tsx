@@ -17,6 +17,7 @@ export function DocumentsPage() {
   const [executiveAction, setExecutiveAction] = useState<ExecutiveAction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmittingAction, setIsSubmittingAction] = useState(false);
+  const [legalDocumentError, setLegalDocumentError] = useState<string | null>(null);
   const { value: documents, error } = useAsyncValue(() => customerPortalService.getDocuments(), []);
   const { value: legalDocuments, error: legalError } = useAsyncValue(() => customerPortalService.getLegalDocuments(), [refreshKey]);
   const { value: executiveSets, error: executiveError } = useAsyncValue(
@@ -53,6 +54,25 @@ export function DocumentsPage() {
     }
   }
 
+  async function openLegalDocumentVersion(versionId: number, purpose: 'preview' | 'download'): Promise<void> {
+    const target = window.open('about:blank', '_blank');
+    if (target === null) {
+      setLegalDocumentError('Разрешите открытие нового окна для просмотра документа.');
+
+      return;
+    }
+
+    target.opener = null;
+    setLegalDocumentError(null);
+
+    try {
+      target.location.replace(await customerPortalService.getLegalDocumentUrl(versionId, purpose));
+    } catch (error) {
+      target.close();
+      setLegalDocumentError(error instanceof Error ? error.message : 'Не удалось открыть документ.');
+    }
+  }
+
   return (
     <div className="page-stack">
       <SectionHeading
@@ -62,23 +82,24 @@ export function DocumentsPage() {
       />
       <section className="list-surface">
         {legalError ? <div className="form-error">{legalError}</div> : null}
+        {legalDocumentError ? <div className="form-error" role="alert">{legalDocumentError}</div> : null}
         {legalDocuments?.map((document: CustomerLegalDocument) => (
           <article key={`legal-${document.id}`} className="list-row list-row--surface">
             <div>
               <strong>{document.title}</strong>
               <p>{document.document_number ?? document.document_type}</p>
               {document.versions.length > 1 ? <p>Версий документа: {document.versions.length}</p> : null}
-              {document.versions.slice(0, 3).map((version) => (
+              {document.versions.filter((version) => version.processing_status === 'ready').slice(0, 3).map((version) => (
                 <p key={version.id}>
                   {version.version_number ?? 'Версия'}{version.original_filename ? ` · ${version.original_filename}` : ''}
                   {' · '}
-                  <button type="button" className="text-button" onClick={() => void customerPortalService.getLegalDocumentUrl(version.id, 'preview').then((url) => window.open(url, '_blank', 'noopener,noreferrer'))}>Открыть</button>
+                  <button type="button" className="text-button" onClick={() => void openLegalDocumentVersion(version.id, 'preview')}>Открыть</button>
                 </p>
               ))}
             </div>
             <div className="row-actions">
-              {document.current_version ? <button type="button" className="text-button" onClick={() => void customerPortalService.getLegalDocumentUrl(document.current_version!.id, 'preview').then((url) => window.open(url, '_blank', 'noopener,noreferrer'))}>Просмотреть</button> : null}
-              {document.current_version ? <button type="button" className="text-button" onClick={() => void customerPortalService.getLegalDocumentUrl(document.current_version!.id, 'download').then((url) => window.open(url, '_blank', 'noopener,noreferrer'))}>Скачать</button> : null}
+              {document.current_version?.processing_status === 'ready' ? <button type="button" className="text-button" onClick={() => void openLegalDocumentVersion(document.current_version!.id, 'preview')}>Просмотреть</button> : null}
+              {document.current_version?.processing_status === 'ready' ? <button type="button" className="text-button" onClick={() => void openLegalDocumentVersion(document.current_version!.id, 'download')}>Скачать</button> : null}
             </div>
           </article>
         ))}
