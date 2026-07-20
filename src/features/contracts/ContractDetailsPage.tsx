@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 
 import { customerPortalService } from '@shared/api/customerPortalService';
@@ -46,8 +47,32 @@ export function ContractDetailsPage() {
   const canViewFinance = canAccess({ permission: 'customer.finance.view' });
   const contractId = Number(params.contractId);
   const backSearch = location.search || '';
+  const [legalDocumentsRefresh, setLegalDocumentsRefresh] = useState(0);
+  const [originalRegistration, setOriginalRegistration] = useState<number | null>(null);
+  const [originalRegistrationError, setOriginalRegistrationError] = useState<string | null>(null);
+  const [originalRegistrationSuccess, setOriginalRegistrationSuccess] = useState<string | null>(null);
   const { value: contract, isLoading } = useAsyncValue(() => customerPortalService.getContract(contractId), [contractId]);
-  const { value: legalDocuments } = useAsyncValue(() => customerPortalService.getContractLegalDocuments(contractId), [contractId]);
+  const { value: legalDocuments } = useAsyncValue(() => customerPortalService.getContractLegalDocuments(contractId), [contractId, legalDocumentsRefresh]);
+
+  async function registerOriginal(signatureRequestId: number, lockVersion: number): Promise<void> {
+    setOriginalRegistration(signatureRequestId);
+    setOriginalRegistrationError(null);
+    setOriginalRegistrationSuccess(null);
+
+    try {
+      await customerPortalService.registerLegalDocumentOriginal(signatureRequestId, {
+        signed_at: new Date().toISOString(),
+        storage_location: 'Оригинал у заказчика',
+        lock_version: lockVersion,
+      });
+      setOriginalRegistrationSuccess('Оригинал документа зарегистрирован.');
+      setLegalDocumentsRefresh((value) => value + 1);
+    } catch (error) {
+      setOriginalRegistrationError(error instanceof Error ? error.message : 'Не удалось зарегистрировать оригинал документа.');
+    } finally {
+      setOriginalRegistration(null);
+    }
+  }
 
   if (!Number.isFinite(contractId)) {
     return <Navigate to="/dashboard/contracts" replace />;
@@ -96,10 +121,12 @@ export function ContractDetailsPage() {
 
       <section className="plain-panel">
         <div className="panel-head"><h3>Юридические документы</h3></div>
+        {originalRegistrationError ? <div className="form-error" role="alert">{originalRegistrationError}</div> : null}
+        {originalRegistrationSuccess ? <p className="form-success" role="status">{originalRegistrationSuccess}</p> : null}
         {legalDocuments?.length ? legalDocuments.map((document) => (
             <div key={document.id} className="list-row">
             <div><strong>{document.title}</strong><p>{document.document_number ?? document.document_type}</p>{document.obligations?.map((obligation) => <p key={obligation.id}>{obligation.title} · {obligation.status}{obligation.due_at ? ` · до ${formatDate(obligation.due_at)}` : ''}</p>)}</div>
-            {document.signature_requests?.filter((request) => request.method === 'paper').map((request) => <button key={request.id} type="button" className="text-button" onClick={() => void customerPortalService.registerLegalDocumentOriginal(request.id, { signed_at: new Date().toISOString(), storage_location: 'Оригинал у заказчика', lock_version: document.lock_version ?? 0 })}>Зарегистрировать оригинал</button>)}
+            {document.signature_requests?.filter((request) => request.method === 'paper').map((request) => <button key={request.id} type="button" className="text-button" disabled={originalRegistration === request.id} onClick={() => void registerOriginal(request.id, document.lock_version ?? 0)}>{originalRegistration === request.id ? 'Регистрируем...' : 'Зарегистрировать оригинал'}</button>)}
             {document.current_version ? <button type="button" className="text-button" onClick={() => void customerPortalService.getLegalDocumentUrl(document.current_version!.id, 'preview').then((url) => window.open(url, '_blank', 'noopener,noreferrer'))}>Открыть</button> : null}
           </div>
         )) : <p className="empty-state">Юридические документы по договору пока не опубликованы.</p>}
