@@ -97,8 +97,8 @@ export function ContractDetailsPage() {
       <section className="plain-panel">
         <div className="panel-head"><h3>Юридические документы</h3></div>
         {legalDocuments?.length ? legalDocuments.map((document) => (
-          <div key={document.id} className="list-row">
-            <div><strong>{document.title}</strong><p>{document.document_number ?? document.document_type}</p></div>
+            <div key={document.id} className="list-row">
+            <div><strong>{document.title}</strong><p>{document.document_number ?? document.document_type}</p>{document.obligations?.map((obligation) => <p key={obligation.id}>{obligation.title} · {obligation.status}{obligation.due_at ? ` · до ${formatDate(obligation.due_at)}` : ''}</p>)}</div>
             {document.current_version ? <button type="button" className="text-button" onClick={() => void customerPortalService.getLegalDocumentUrl(document.current_version!.id, 'preview').then((url) => window.open(url, '_blank', 'noopener,noreferrer'))}>Открыть</button> : null}
           </div>
         )) : <p className="empty-state">Юридические документы по договору пока не опубликованы.</p>}

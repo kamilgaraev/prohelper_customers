@@ -411,6 +411,7 @@ export interface CustomerLegalDocument {
       requires_comment?: boolean;
     }>;
   };
+  obligations?: Array<{ id: number; title: string; status: string; due_at: string | null }>;
 }
 
 export interface CustomerContractsFilters {
