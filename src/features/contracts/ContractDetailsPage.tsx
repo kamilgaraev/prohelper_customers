@@ -99,6 +99,7 @@ export function ContractDetailsPage() {
         {legalDocuments?.length ? legalDocuments.map((document) => (
             <div key={document.id} className="list-row">
             <div><strong>{document.title}</strong><p>{document.document_number ?? document.document_type}</p>{document.obligations?.map((obligation) => <p key={obligation.id}>{obligation.title} · {obligation.status}{obligation.due_at ? ` · до ${formatDate(obligation.due_at)}` : ''}</p>)}</div>
+            {document.signature_requests?.filter((request) => request.method === 'paper').map((request) => <button key={request.id} type="button" className="text-button" onClick={() => void customerPortalService.registerLegalDocumentOriginal(request.id, { signed_at: new Date().toISOString(), storage_location: 'Оригинал у заказчика', lock_version: document.lock_version ?? 0 })}>Зарегистрировать оригинал</button>)}
             {document.current_version ? <button type="button" className="text-button" onClick={() => void customerPortalService.getLegalDocumentUrl(document.current_version!.id, 'preview').then((url) => window.open(url, '_blank', 'noopener,noreferrer'))}>Открыть</button> : null}
           </div>
         )) : <p className="empty-state">Юридические документы по договору пока не опубликованы.</p>}

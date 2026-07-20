@@ -65,6 +65,7 @@ export interface CustomerHandoverScope {
   title: string;
   description?: string | null;
   status: string;
+  lock_version: number;
   planned_acceptance_date?: string | null;
   accepted_at?: string | null;
   handed_over_at?: string | null;
@@ -412,6 +413,7 @@ export interface CustomerLegalDocument {
     }>;
   };
   obligations?: Array<{ id: number; title: string; status: string; due_at: string | null }>;
+  signature_requests?: Array<{ id: number; method: string }>;
 }
 
 export interface CustomerContractsFilters {
