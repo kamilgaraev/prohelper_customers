@@ -74,7 +74,7 @@ export function ApprovalsPage() {
             <article key={`legal-${document.id}-${action.action}`} className="list-row list-row--surface">
               <div><strong>{document.title}</strong><p>Юридический документ</p></div>
               <div className="row-actions">
-                <button type="button" className="button button--primary" disabled={legalActionInProgress === `${document.id}:${action.target_step_id}:${action.action}`} onClick={() => void decideLegalDocumentAction(document.id, action.action, action.target_step_id!, action.expected_instance_lock_version ?? 0, action.expected_step_lock_version ?? 0, action.requires_comment)}>
+                <button type="button" className="button button--primary" disabled={legalActionInProgress === `${document.id}:${action.target_step_id}:${action.action}`} onClick={() => void decideLegalDocumentAction(document.id, action.action, action.target_step_id!, action.expected_instance_lock_version ?? 0, action.expected_step_lock_version ?? 0, action.requires_comment ?? false)}>
                   {action.action === 'approve' ? 'Согласовать' : action.action === 'reject' ? 'Отклонить' : 'Вернуть на доработку'}
                 </button>
               </div>
