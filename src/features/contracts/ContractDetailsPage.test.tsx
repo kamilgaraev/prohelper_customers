@@ -52,6 +52,7 @@ describe('ContractDetailsPage legal archive', () => {
       current_version: { id: 29, version_number: '1.0', version_label: null, status: 'ready', processing_status: 'ready', original_filename: 'contract.pdf', mime_type: 'application/pdf', size_bytes: 12, uploaded_at: null },
       versions: [],
       workflow_summary: {},
+      signature_requests: [{ id: 31, method: 'paper' }],
     }] as never);
   });
 
@@ -69,6 +70,34 @@ describe('ContractDetailsPage legal archive', () => {
 
     expect(customerPortalService.getLegalDocumentUrl).toHaveBeenCalledWith(29, 'preview');
     expect(target.location.replace).toHaveBeenCalledWith('https://storage.example.test/contract.pdf');
+    root.unmount();
+  });
+
+  it('retries paper-original registration with the same idempotency key', async () => {
+    vi.mocked(customerPortalService.registerLegalDocumentOriginal)
+      .mockRejectedValueOnce(new Error('Временная ошибка'))
+      .mockResolvedValueOnce(undefined);
+    const { container, root } = await renderPage();
+    const originalButton = Array.from(container.querySelectorAll('button'))
+      .find((button) => button.textContent === 'Зарегистрировать оригинал');
+
+    await act(async () => {
+      originalButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      originalButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const calls = vi.mocked(customerPortalService.registerLegalDocumentOriginal).mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[0][0]).toBe(31);
+    expect(calls[1][0]).toBe(31);
+    expect(calls[1][1].idempotency_key).toBe(calls[0][1].idempotency_key);
+    expect(calls[1][1].signed_at).toBe(calls[0][1].signed_at);
     root.unmount();
   });
 });
