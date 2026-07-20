@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 
 import { customerPortalService } from '@shared/api/customerPortalService';
@@ -51,6 +51,7 @@ export function ContractDetailsPage() {
   const [originalRegistration, setOriginalRegistration] = useState<number | null>(null);
   const [originalRegistrationError, setOriginalRegistrationError] = useState<string | null>(null);
   const [originalRegistrationSuccess, setOriginalRegistrationSuccess] = useState<string | null>(null);
+  const originalRegistrations = useRef(new Map<number, { signed_at: string; idempotency_key: string }>());
   const { value: contract, isLoading } = useAsyncValue(() => customerPortalService.getContract(contractId), [contractId]);
   const { value: legalDocuments } = useAsyncValue(() => customerPortalService.getContractLegalDocuments(contractId), [contractId, legalDocumentsRefresh]);
 
@@ -58,17 +59,25 @@ export function ContractDetailsPage() {
     setOriginalRegistration(signatureRequestId);
     setOriginalRegistrationError(null);
     setOriginalRegistrationSuccess(null);
+    const action = originalRegistrations.current.get(signatureRequestId) ?? {
+      signed_at: new Date().toISOString(),
+      idempotency_key: crypto.randomUUID(),
+    };
+    originalRegistrations.current.set(signatureRequestId, action);
 
     try {
       await customerPortalService.registerLegalDocumentOriginal(signatureRequestId, {
-        signed_at: new Date().toISOString(),
+        signed_at: action.signed_at,
         storage_location: 'Оригинал у заказчика',
         lock_version: lockVersion,
+        idempotency_key: action.idempotency_key,
       });
+      originalRegistrations.current.delete(signatureRequestId);
       setOriginalRegistrationSuccess('Оригинал документа зарегистрирован.');
       setLegalDocumentsRefresh((value) => value + 1);
     } catch (error) {
       setOriginalRegistrationError(error instanceof Error ? error.message : 'Не удалось зарегистрировать оригинал документа.');
+      setLegalDocumentsRefresh((value) => value + 1);
     } finally {
       setOriginalRegistration(null);
     }

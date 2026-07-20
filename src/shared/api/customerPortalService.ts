@@ -234,8 +234,8 @@ export const customerPortalService = {
     }
   },
 
-  async registerLegalDocumentOriginal(signatureRequestId: number, payload: { signed_at: string; storage_location: string; lock_version: number }): Promise<void> {
-    try { await customerApi.post<ApiEnvelope<unknown>>(`/legal-signature-requests/${signatureRequestId}/upload-original`, { ...payload, idempotency_key: crypto.randomUUID() }); }
+  async registerLegalDocumentOriginal(signatureRequestId: number, payload: { signed_at: string; storage_location: string; lock_version: number; idempotency_key: string }): Promise<void> {
+    try { await customerApi.post<ApiEnvelope<unknown>>(`/legal-signature-requests/${signatureRequestId}/upload-original`, payload); }
     catch (error) { throw new Error(resolveApiMessage(error, 'Не удалось зарегистрировать оригинал документа')); }
   },
 
