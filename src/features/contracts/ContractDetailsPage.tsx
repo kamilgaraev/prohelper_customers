@@ -83,6 +83,25 @@ export function ContractDetailsPage() {
     }
   }
 
+  async function openLegalDocumentVersion(versionId: number): Promise<void> {
+    const target = window.open('about:blank', '_blank');
+    if (target === null) {
+      setOriginalRegistrationError('Разрешите открытие нового окна для просмотра документа.');
+
+      return;
+    }
+
+    target.opener = null;
+    setOriginalRegistrationError(null);
+
+    try {
+      target.location.replace(await customerPortalService.getLegalDocumentUrl(versionId, 'preview'));
+    } catch (error) {
+      target.close();
+      setOriginalRegistrationError(error instanceof Error ? error.message : 'Не удалось открыть документ.');
+    }
+  }
+
   if (!Number.isFinite(contractId)) {
     return <Navigate to="/dashboard/contracts" replace />;
   }
@@ -136,7 +155,7 @@ export function ContractDetailsPage() {
             <div key={document.id} className="list-row">
             <div><strong>{document.title}</strong><p>{document.document_number ?? document.document_type}</p>{document.obligations?.map((obligation) => <p key={obligation.id}>{obligation.title} · {obligation.status}{obligation.due_at ? ` · до ${formatDate(obligation.due_at)}` : ''}</p>)}</div>
             {document.signature_requests?.filter((request) => request.method === 'paper').map((request) => <button key={request.id} type="button" className="text-button" disabled={originalRegistration === request.id} onClick={() => void registerOriginal(request.id, document.lock_version ?? 0)}>{originalRegistration === request.id ? 'Регистрируем...' : 'Зарегистрировать оригинал'}</button>)}
-            {document.current_version ? <button type="button" className="text-button" onClick={() => void customerPortalService.getLegalDocumentUrl(document.current_version!.id, 'preview').then((url) => window.open(url, '_blank', 'noopener,noreferrer'))}>Открыть</button> : null}
+            {document.current_version?.processing_status === 'ready' ? <button type="button" className="text-button" onClick={() => void openLegalDocumentVersion(document.current_version!.id)}>Открыть</button> : null}
           </div>
         )) : <p className="empty-state">Юридические документы по договору пока не опубликованы.</p>}
       </section>
