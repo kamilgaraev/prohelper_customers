@@ -64,7 +64,18 @@ export function DocumentsPage() {
         {legalError ? <div className="form-error">{legalError}</div> : null}
         {legalDocuments?.map((document: CustomerLegalDocument) => (
           <article key={`legal-${document.id}`} className="list-row list-row--surface">
-            <div><strong>{document.title}</strong><p>{document.document_number ?? document.document_type}</p></div>
+            <div>
+              <strong>{document.title}</strong>
+              <p>{document.document_number ?? document.document_type}</p>
+              {document.versions.length > 1 ? <p>Версий документа: {document.versions.length}</p> : null}
+              {document.versions.slice(0, 3).map((version) => (
+                <p key={version.id}>
+                  {version.version_number ?? 'Версия'}{version.original_filename ? ` · ${version.original_filename}` : ''}
+                  {' · '}
+                  <button type="button" className="text-button" onClick={() => void customerPortalService.getLegalDocumentUrl(version.id, 'preview').then((url) => window.open(url, '_blank', 'noopener,noreferrer'))}>Открыть</button>
+                </p>
+              ))}
+            </div>
             <div className="row-actions">
               {document.current_version ? <button type="button" className="text-button" onClick={() => void customerPortalService.getLegalDocumentUrl(document.current_version!.id, 'preview').then((url) => window.open(url, '_blank', 'noopener,noreferrer'))}>Просмотреть</button> : null}
               {document.current_version ? <button type="button" className="text-button" onClick={() => void customerPortalService.getLegalDocumentUrl(document.current_version!.id, 'download').then((url) => window.open(url, '_blank', 'noopener,noreferrer'))}>Скачать</button> : null}
