@@ -222,12 +222,12 @@ export const customerPortalService = {
   async decideLegalDocumentStep(
     stepId: number,
     action: 'approve' | 'reject' | 'return',
-    payload: { instance_lock_version: number; step_lock_version: number; comment?: string }
+    payload: { instance_lock_version: number; step_lock_version: number; comment?: string; idempotency_key?: string }
   ): Promise<void> {
     try {
       await customerApi.post<ApiEnvelope<unknown>>(`/legal-workflow-steps/${stepId}/${action}`, {
         ...payload,
-        idempotency_key: crypto.randomUUID(),
+        idempotency_key: payload.idempotency_key ?? crypto.randomUUID(),
       });
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось выполнить действие по документу'));

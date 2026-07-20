@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { customerPortalService } from '@shared/api/customerPortalService';
@@ -8,6 +8,9 @@ import { StatusPill } from '@shared/ui/StatusPill';
 
 export function ApprovalsPage() {
   const [refreshToken, setRefreshToken] = useState(0);
+  const [legalActionInProgress, setLegalActionInProgress] = useState<string | null>(null);
+  const [legalActionError, setLegalActionError] = useState<string | null>(null);
+  const legalActionKeys = useRef(new Map<string, string>());
   const { value: approvals, error } = useAsyncValue(() => customerPortalService.getApprovals(), []);
   const {
     value: changeApprovals,
@@ -22,6 +25,37 @@ export function ApprovalsPage() {
     setRefreshToken((current) => current + 1);
   }, []);
 
+  async function decideLegalDocumentAction(
+    documentId: number,
+    action: 'approve' | 'reject' | 'return',
+    stepId: number,
+    instanceLockVersion: number,
+    stepLockVersion: number,
+    requiresComment: boolean,
+  ): Promise<void> {
+    const actionKey = `${documentId}:${stepId}:${action}`;
+    const idempotencyKey = legalActionKeys.current.get(actionKey) ?? crypto.randomUUID();
+    legalActionKeys.current.set(actionKey, idempotencyKey);
+    setLegalActionInProgress(actionKey);
+    setLegalActionError(null);
+
+    try {
+      await customerPortalService.decideLegalDocumentStep(stepId, action, {
+        instance_lock_version: instanceLockVersion,
+        step_lock_version: stepLockVersion,
+        comment: requiresComment ? 'Решение направлено из кабинета заказчика' : undefined,
+        idempotency_key: idempotencyKey,
+      });
+      legalActionKeys.current.delete(actionKey);
+      setRefreshToken((current) => current + 1);
+    } catch (actionError) {
+      setLegalActionError(actionError instanceof Error ? actionError.message : 'Не удалось выполнить действие по документу.');
+      setRefreshToken((current) => current + 1);
+    } finally {
+      setLegalActionInProgress(null);
+    }
+  }
+
   return (
     <div className="page-stack">
       <SectionHeading
@@ -33,13 +67,14 @@ export function ApprovalsPage() {
         {error ? <div className="form-error">{error}</div> : null}
         {changeError ? <div className="form-error">{changeError}</div> : null}
         {legalError ? <div className="form-error">{legalError}</div> : null}
+        {legalActionError ? <div className="form-error" role="alert">{legalActionError}</div> : null}
         {legalDocuments?.flatMap((document) => (document.workflow_summary.available_action_details ?? [])
           .filter((action) => action.enabled && action.target_step_id !== null)
           .map((action) => (
             <article key={`legal-${document.id}-${action.action}`} className="list-row list-row--surface">
               <div><strong>{document.title}</strong><p>Юридический документ</p></div>
               <div className="row-actions">
-                <button type="button" className="button button--primary" onClick={() => void customerPortalService.decideLegalDocumentStep(action.target_step_id!, action.action, { instance_lock_version: action.expected_instance_lock_version ?? 0, step_lock_version: action.expected_step_lock_version ?? 0, comment: action.requires_comment ? 'Решение направлено из кабинета заказчика' : undefined }).then(() => setRefreshToken((current) => current + 1))}>
+                <button type="button" className="button button--primary" disabled={legalActionInProgress === `${document.id}:${action.target_step_id}:${action.action}`} onClick={() => void decideLegalDocumentAction(document.id, action.action, action.target_step_id!, action.expected_instance_lock_version ?? 0, action.expected_step_lock_version ?? 0, action.requires_comment)}>
                   {action.action === 'approve' ? 'Согласовать' : action.action === 'reject' ? 'Отклонить' : 'Вернуть на доработку'}
                 </button>
               </div>
