@@ -378,6 +378,41 @@ export interface CustomerContractItem {
   }>;
 }
 
+export interface CustomerLegalDocumentVersion {
+  id: number;
+  version_number: string | null;
+  version_label: string | null;
+  status: string;
+  processing_status: string;
+  original_filename: string | null;
+  mime_type: string | null;
+  size_bytes: number;
+  uploaded_at: string | null;
+}
+
+export interface CustomerLegalDocument {
+  id: number;
+  title: string;
+  document_number: string | null;
+  document_type: string;
+  status: string;
+  document_date: string | null;
+  effective_until: string | null;
+  project: { id: number; name: string } | null;
+  current_version: CustomerLegalDocumentVersion | null;
+  versions: CustomerLegalDocumentVersion[];
+  workflow_summary: {
+    available_action_details?: Array<{
+      action: 'approve' | 'reject' | 'return';
+      enabled: boolean;
+      target_step_id: number | null;
+      expected_instance_lock_version: number | null;
+      expected_step_lock_version: number | null;
+      requires_comment?: boolean;
+    }>;
+  };
+}
+
 export interface CustomerContractsFilters {
   page?: number;
   per_page?: number;

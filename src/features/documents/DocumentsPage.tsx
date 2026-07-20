@@ -6,6 +6,7 @@ import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
 import { CustomerExecutiveDocumentSet } from '@shared/types/dashboard';
+import { CustomerLegalDocument } from '@shared/types/dashboard';
 
 type ExecutiveAction =
   | { type: 'remark'; documentId: number; body: string; severity: 'minor' | 'major' | 'critical' }
@@ -17,6 +18,7 @@ export function DocumentsPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmittingAction, setIsSubmittingAction] = useState(false);
   const { value: documents, error } = useAsyncValue(() => customerPortalService.getDocuments(), []);
+  const { value: legalDocuments, error: legalError } = useAsyncValue(() => customerPortalService.getLegalDocuments(), [refreshKey]);
   const { value: executiveSets, error: executiveError } = useAsyncValue(
     () => customerPortalService.getExecutiveDocumentSets(),
     [refreshKey]
@@ -59,6 +61,16 @@ export function DocumentsPage() {
         description="Единая точка доступа к документам по проектам с возможностью сразу открыть замечание по нужному файлу."
       />
       <section className="list-surface">
+        {legalError ? <div className="form-error">{legalError}</div> : null}
+        {legalDocuments?.map((document: CustomerLegalDocument) => (
+          <article key={`legal-${document.id}`} className="list-row list-row--surface">
+            <div><strong>{document.title}</strong><p>{document.document_number ?? document.document_type}</p></div>
+            <div className="row-actions">
+              {document.current_version ? <button type="button" className="text-button" onClick={() => void customerPortalService.getLegalDocumentUrl(document.current_version!.id, 'preview').then((url) => window.open(url, '_blank', 'noopener,noreferrer'))}>Просмотреть</button> : null}
+              {document.current_version ? <button type="button" className="text-button" onClick={() => void customerPortalService.getLegalDocumentUrl(document.current_version!.id, 'download').then((url) => window.open(url, '_blank', 'noopener,noreferrer'))}>Скачать</button> : null}
+            </div>
+          </article>
+        ))}
         {error ? <div className="form-error">{error}</div> : null}
         {documents?.length ? (
           documents.map((item) => (

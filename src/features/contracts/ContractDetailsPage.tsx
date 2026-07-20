@@ -47,6 +47,7 @@ export function ContractDetailsPage() {
   const contractId = Number(params.contractId);
   const backSearch = location.search || '';
   const { value: contract, isLoading } = useAsyncValue(() => customerPortalService.getContract(contractId), [contractId]);
+  const { value: legalDocuments } = useAsyncValue(() => customerPortalService.getContractLegalDocuments(contractId), [contractId]);
 
   if (!Number.isFinite(contractId)) {
     return <Navigate to="/dashboard/contracts" replace />;
@@ -91,6 +92,16 @@ export function ContractDetailsPage() {
             <strong>{formatMoney(contract?.paid_amount)}</strong>
           </div>
         </div>
+      </section>
+
+      <section className="plain-panel">
+        <div className="panel-head"><h3>Юридические документы</h3></div>
+        {legalDocuments?.length ? legalDocuments.map((document) => (
+          <div key={document.id} className="list-row">
+            <div><strong>{document.title}</strong><p>{document.document_number ?? document.document_type}</p></div>
+            {document.current_version ? <button type="button" className="text-button" onClick={() => void customerPortalService.getLegalDocumentUrl(document.current_version!.id, 'preview').then((url) => window.open(url, '_blank', 'noopener,noreferrer'))}>Открыть</button> : null}
+          </div>
+        )) : <p className="empty-state">Юридические документы по договору пока не опубликованы.</p>}
       </section>
 
       <section className="dual-columns">

@@ -13,6 +13,7 @@ import {
   CustomerExecutiveDocumentSet,
   CustomerHandoverScope,
   CustomerIssueItem,
+  CustomerLegalDocument,
   CustomerOrganizationSearchItem,
   CustomerProjectParticipantsResponse,
   CustomerProjectInvitationRegistryItem,
@@ -191,6 +192,48 @@ function normalizeDashboardData(payload: DashboardResponseData): DashboardData {
 }
 
 export const customerPortalService = {
+  async getLegalDocuments(): Promise<CustomerLegalDocument[]> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<CustomerLegalDocument[]>>('/legal-documents');
+      return toList(extractApiData(response.data));
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить юридические документы'));
+    }
+  },
+
+  async getContractLegalDocuments(contractId: number): Promise<CustomerLegalDocument[]> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<CustomerLegalDocument[]>>(`/contracts/${contractId}/legal-documents`);
+      return toList(extractApiData(response.data));
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить юридические документы договора'));
+    }
+  },
+
+  async getLegalDocumentUrl(versionId: number, purpose: 'preview' | 'download'): Promise<string> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<{ url: string }>>(`/legal-document-versions/${versionId}/${purpose}`);
+      return extractApiData(response.data).url;
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось открыть документ'));
+    }
+  },
+
+  async decideLegalDocumentStep(
+    stepId: number,
+    action: 'approve' | 'reject' | 'return',
+    payload: { instance_lock_version: number; step_lock_version: number; comment?: string }
+  ): Promise<void> {
+    try {
+      await customerApi.post<ApiEnvelope<unknown>>(`/legal-workflow-steps/${stepId}/${action}`, {
+        ...payload,
+        idempotency_key: crypto.randomUUID(),
+      });
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось выполнить действие по документу'));
+    }
+  },
+
   async getDashboard(): Promise<DashboardData> {
     try {
       const response = await customerApi.get<ApiEnvelope<DashboardResponseData>>('/dashboard');

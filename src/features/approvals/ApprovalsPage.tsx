@@ -13,6 +13,7 @@ export function ApprovalsPage() {
     value: changeApprovals,
     error: changeError,
   } = useAsyncValue(() => customerPortalService.getChangeApprovals(), [refreshToken]);
+  const { value: legalDocuments, error: legalError } = useAsyncValue(() => customerPortalService.getLegalDocuments(), [refreshToken]);
 
   const approveChange = useCallback(async (changeId: number) => {
     await customerPortalService.approveChangeRequest(changeId, {
@@ -31,6 +32,19 @@ export function ApprovalsPage() {
       <section className="list-surface">
         {error ? <div className="form-error">{error}</div> : null}
         {changeError ? <div className="form-error">{changeError}</div> : null}
+        {legalError ? <div className="form-error">{legalError}</div> : null}
+        {legalDocuments?.flatMap((document) => (document.workflow_summary.available_action_details ?? [])
+          .filter((action) => action.enabled && action.target_step_id !== null)
+          .map((action) => (
+            <article key={`legal-${document.id}-${action.action}`} className="list-row list-row--surface">
+              <div><strong>{document.title}</strong><p>Юридический документ</p></div>
+              <div className="row-actions">
+                <button type="button" className="button button--primary" onClick={() => void customerPortalService.decideLegalDocumentStep(action.target_step_id!, action.action, { instance_lock_version: action.expected_instance_lock_version ?? 0, step_lock_version: action.expected_step_lock_version ?? 0, comment: action.requires_comment ? 'Решение направлено из кабинета заказчика' : undefined }).then(() => setRefreshToken((current) => current + 1))}>
+                  {action.action === 'approve' ? 'Согласовать' : action.action === 'reject' ? 'Отклонить' : 'Вернуть на доработку'}
+                </button>
+              </div>
+            </article>
+          )))}
         {approvals?.map((item) => (
           <article key={item.id} className="list-row list-row--surface">
             <div>
