@@ -397,6 +397,7 @@ export interface CustomerLegalDocument {
   document_number: string | null;
   document_type: string;
   status: string;
+  lock_version: number;
   document_date: string | null;
   effective_until: string | null;
   project: { id: number; name: string } | null;
