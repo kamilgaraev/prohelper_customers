@@ -1,10 +1,11 @@
 import axios from 'axios';
 
 import { extractApiData, resolveApiMessage } from '@shared/api/apiHelpers';
-import { customerApi } from '@shared/api/customerApi';
+import { customerApi, refreshCustomerTokens } from '@shared/api/customerApi';
 import {
   clearPendingVerification,
   clearSession,
+  getStoredCsrfToken,
   getStoredToken,
   savePendingVerification,
   saveSession
@@ -26,6 +27,7 @@ import {
 
 interface LoginResponseData {
   token?: string;
+  csrf_token?: string;
   user: CustomerProfile;
   organization?: {
     id: number;
@@ -153,14 +155,14 @@ function buildPendingVerificationState(data: RegisterResponseData): PendingVerif
   };
 }
 
-async function fetchCustomerSession(token: string): Promise<AuthSession> {
+async function fetchCustomerSession(token: string, csrfToken: string): Promise<AuthSession> {
   const [profileResponse, verificationResponse] = await Promise.all([
     customerApi.get<ApiEnvelope<CustomerProfileEnvelope>>('/profile', {
       headers: {
         Authorization: `Bearer ${token}`
       }
     }),
-    axios.get<ApiEnvelope<VerificationResponseData>>(`${env.customerAuthUrl}/email/check`, {
+    customerApi.get<ApiEnvelope<VerificationResponseData>>('/auth/email/check', {
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/json',
@@ -175,6 +177,7 @@ async function fetchCustomerSession(token: string): Promise<AuthSession> {
 
   return {
     token,
+    csrfToken,
     user,
     emailVerified: verificationData.verified,
     availableInterfaces: user.interfaces
@@ -183,7 +186,7 @@ async function fetchCustomerSession(token: string): Promise<AuthSession> {
 
 function persistSession(session: AuthSession) {
   clearPendingVerification();
-  saveSession(session.token, session.user);
+  saveSession(session.token, session.csrfToken, session.user);
 }
 
 export const authService = {
@@ -193,6 +196,7 @@ export const authService = {
         `${env.customerAuthUrl}/login`,
         payload,
         {
+          withCredentials: true,
           headers: {
             Accept: 'application/json',
             'Content-Type': 'application/json'
@@ -201,11 +205,11 @@ export const authService = {
       );
       const data = extractApiData(response.data);
 
-      if (!data.token) {
+      if (!data.token || !data.csrf_token) {
         throw new Error('Сервер не вернул токен авторизации.');
       }
 
-      const session = await fetchCustomerSession(data.token);
+      const session = await fetchCustomerSession(data.token, data.csrf_token);
 
       persistSession(session);
 
@@ -239,6 +243,7 @@ export const authService = {
           organization_name: payload.companyName
         },
         {
+          withCredentials: true,
           headers: {
             Accept: 'application/json',
             'Content-Type': 'application/json'
@@ -265,14 +270,14 @@ export const authService = {
   },
 
   async restoreSession(): Promise<AuthSession | null> {
-    const token = getStoredToken();
-
-    if (!token) {
-      return null;
-    }
-
     try {
-      const session = await fetchCustomerSession(token);
+      const tokens = await refreshCustomerTokens();
+
+      if (!tokens) {
+        return null;
+      }
+
+      const session = await fetchCustomerSession(tokens.token, tokens.csrf_token);
 
       persistSession(session);
 
@@ -284,37 +289,18 @@ export const authService = {
   },
 
   async refreshSession(): Promise<string | null> {
-    const token = getStoredToken();
-
-    if (!token) {
-      return null;
-    }
-
     try {
-      const response = await axios.post<ApiEnvelope<{ token: string }>>(
-        `${env.customerAuthUrl}/refresh`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/json',
-            'Content-Type': 'application/json'
-          }
-        }
-      );
+      const tokens = await refreshCustomerTokens();
 
-      const refreshedToken = extractApiData(response.data).token;
-
-      if (!refreshedToken) {
-        clearSession();
+      if (!tokens) {
         return null;
       }
 
-      const session = await fetchCustomerSession(refreshedToken);
+      const session = await fetchCustomerSession(tokens.token, tokens.csrf_token);
 
       persistSession(session);
 
-      return refreshedToken;
+      return tokens.token;
     } catch {
       clearSession();
       return null;
@@ -323,18 +309,19 @@ export const authService = {
 
   async logout() {
     const token = getStoredToken();
+    const csrfToken = getStoredCsrfToken();
 
     try {
       if (token) {
-        await axios.post(
-          `${env.customerAuthUrl}/logout`,
+        await customerApi.post(
+          '/auth/logout',
           {},
           {
             headers: {
               Authorization: `Bearer ${token}`,
-              Accept: 'application/json',
-              'Content-Type': 'application/json'
-            }
+              'X-CSRF-Token': csrfToken ?? ''
+            },
+            withCredentials: true
           }
         );
       }
@@ -381,10 +368,10 @@ export const authService = {
       },
       {
         headers: {
-          Authorization: getStoredToken() ? `Bearer ${getStoredToken()}` : undefined,
           Accept: 'application/json',
           'Content-Type': 'application/json'
-        }
+        },
+        withCredentials: true
       }
     );
     return extractApiData(response.data);
@@ -467,6 +454,7 @@ export const authService = {
         `${env.customerApiUrl}/invitations/${token}/login`,
         payload,
         {
+          withCredentials: true,
           headers: {
             Accept: 'application/json',
             'Content-Type': 'application/json'
@@ -475,11 +463,11 @@ export const authService = {
       );
       const data = extractApiData(response.data);
 
-      if (!data.token) {
+      if (!data.token || !data.csrf_token) {
         throw new Error('Сервер не вернул токен авторизации.');
       }
 
-      const session = await fetchCustomerSession(data.token);
+      const session = await fetchCustomerSession(data.token, data.csrf_token);
 
       persistSession(session);
 

@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockedAxiosGet, mockedAxiosPost, mockedCustomerGet } = vi.hoisted(() => ({
+const { mockedAxiosGet, mockedAxiosPost, mockedCustomerGet, mockedRefreshTokens } = vi.hoisted(() => ({
   mockedAxiosGet: vi.fn(),
   mockedAxiosPost: vi.fn(),
-  mockedCustomerGet: vi.fn()
+  mockedCustomerGet: vi.fn(),
+  mockedRefreshTokens: vi.fn()
 }));
 
 vi.mock('axios', () => ({
@@ -15,6 +16,7 @@ vi.mock('axios', () => ({
 }));
 
 vi.mock('@shared/api/customerApi', () => ({
+  refreshCustomerTokens: mockedRefreshTokens,
   customerApi: {
     get: mockedCustomerGet,
     post: vi.fn(),
@@ -26,6 +28,7 @@ vi.mock('@shared/api/customerApi', () => ({
 }));
 
 import { authService } from '@shared/api/authService';
+import { clearSession } from '@shared/api/storage';
 
 describe('authService', () => {
   const storage = new Map<string, string>();
@@ -49,6 +52,8 @@ describe('authService', () => {
     mockedAxiosGet.mockReset();
     mockedAxiosPost.mockReset();
     mockedCustomerGet.mockReset();
+    mockedRefreshTokens.mockReset();
+    clearSession();
     sessionStorage.clear();
   });
 
@@ -57,7 +62,8 @@ describe('authService', () => {
       data: {
         success: true,
         data: {
-          token: 'jwt-token'
+          token: 'jwt-token',
+          csrf_token: 'csrf-token'
         }
       }
     });
@@ -77,7 +83,7 @@ describe('authService', () => {
         }
       }
     });
-    mockedAxiosGet.mockResolvedValueOnce({
+    mockedCustomerGet.mockResolvedValueOnce({
       data: {
         success: true,
         data: {
@@ -100,6 +106,9 @@ describe('authService', () => {
       expect(result.user.roles).toContain('customer_curator');
       expect(result.user.interfaces).toContain('admin');
       expect(result.emailVerified).toBe(true);
+      expect(result.csrfToken).toBe('csrf-token');
+      expect([...storage.keys()]).not.toContain('prohelper_customers.token');
+      expect([...storage.values()]).not.toContain('jwt-token');
     }
   });
 

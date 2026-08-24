@@ -1,12 +1,7 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 
 import { authService } from '@shared/api/authService';
-import {
-  getAuthStorageChangeEvent,
-  getPendingVerification,
-  getStoredToken,
-  getStoredUser
-} from '@shared/api/storage';
+import { getPendingVerification } from '@shared/api/storage';
 import {
   AuthSession,
   AuthSessionStatus,
@@ -45,23 +40,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function bootstrap() {
       setIsLoading(true);
 
-      const storedToken = getStoredToken();
-      const storedUser = getStoredUser<CustomerUser>();
       const pending = getPendingVerification<PendingVerificationState>();
 
       if (!cancelled) {
         setPendingVerification(pending);
-      }
-
-      if (!storedToken || !storedUser) {
-        if (!cancelled) {
-          setToken(null);
-          setUser(null);
-          setStatus(pending ? 'pending_verification' : 'guest');
-          setIsLoading(false);
-        }
-
-        return;
       }
 
       const session = await authService.restoreSession();
@@ -89,31 +71,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    const handler = () => {
-      const nextToken = getStoredToken();
-      const nextUser = getStoredUser<CustomerUser>();
-      const nextPending = getPendingVerification<PendingVerificationState>();
-
-      setToken(nextToken);
-      setUser(nextUser);
-      setPendingVerification(nextPending);
-
-      if (nextToken && nextUser) {
-        setStatus('authenticated');
-        return;
-      }
-
-      setStatus(nextPending ? 'pending_verification' : 'guest');
-    };
-
-    window.addEventListener(getAuthStorageChangeEvent(), handler);
-
-    return () => {
-      window.removeEventListener(getAuthStorageChangeEvent(), handler);
     };
   }, []);
 

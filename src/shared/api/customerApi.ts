@@ -1,53 +1,83 @@
 import axios from 'axios';
 import type { InternalAxiosRequestConfig } from 'axios';
 
-import { clearSession, getStoredToken, getStoredUser, saveSession } from '@shared/api/storage';
+import {
+  clearSession,
+  getStoredCsrfToken,
+  getStoredToken,
+  updateSessionTokens
+} from '@shared/api/storage';
 import { env } from '@shared/config/env';
 import { ApiEnvelope } from '@shared/types/api';
-import { CustomerUser } from '@shared/types/auth';
 
 type RetriableConfig = InternalAxiosRequestConfig & { _retry?: boolean };
 
-async function refreshToken(): Promise<string | null> {
-  const token = getStoredToken();
-  const user = getStoredUser<CustomerUser>();
+interface TokenResponse {
+  token: string;
+  csrf_token: string;
+}
 
-  if (!token || !user) {
-    clearSession();
-    return null;
+let refreshPromise: Promise<TokenResponse | null> | null = null;
+
+export async function refreshCustomerTokens(): Promise<TokenResponse | null> {
+  if (refreshPromise) {
+    return refreshPromise;
   }
 
-  try {
-    const response = await axios.post<ApiEnvelope<{ token: string }>>(
-      `${env.customerAuthUrl}/refresh`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/json',
-          'Content-Type': 'application/json'
+  refreshPromise = (async () => {
+    try {
+      const csrfResponse = await axios.get<ApiEnvelope<{ csrf_token: string }>>(
+        `${env.customerAuthUrl}/csrf`,
+        {
+          withCredentials: true,
+          headers: { Accept: 'application/json' }
         }
+      );
+      const csrfToken = csrfResponse.data.data?.csrf_token;
+
+      if (!csrfToken) {
+        clearSession();
+        return null;
       }
-    );
 
-    const nextToken = response.data.data?.token;
+      const response = await axios.post<ApiEnvelope<TokenResponse>>(
+        `${env.customerAuthUrl}/refresh`,
+        {},
+        {
+          withCredentials: true,
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+          }
+        }
+      );
+      const tokens = response.data.data;
 
-    if (!nextToken) {
+      if (!tokens?.token || !tokens.csrf_token) {
+        clearSession();
+        return null;
+      }
+
+      updateSessionTokens(tokens.token, tokens.csrf_token);
+
+      return tokens;
+    } catch {
       clearSession();
       return null;
     }
+  })();
 
-    saveSession(nextToken, user);
-
-    return nextToken;
-  } catch {
-    clearSession();
-    return null;
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
   }
 }
 
 export const customerApi = axios.create({
   baseURL: env.customerApiUrl,
+  withCredentials: true,
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json'
@@ -56,9 +86,15 @@ export const customerApi = axios.create({
 
 customerApi.interceptors.request.use((config) => {
   const token = getStoredToken();
+  const csrfToken = getStoredCsrfToken();
+  const method = config.method?.toUpperCase() ?? 'GET';
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  if (csrfToken && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+    config.headers['X-CSRF-Token'] = csrfToken;
   }
 
   return config;
@@ -77,21 +113,21 @@ customerApi.interceptors.response.use(
       error.response?.status !== 401 ||
       !originalRequest ||
       originalRequest._retry ||
-      originalRequest.url?.includes('/auth/refresh')
+      originalRequest.url?.includes('/auth/refresh') ||
+      originalRequest.url?.includes('/auth/csrf')
     ) {
       return Promise.reject(error);
     }
 
     originalRequest._retry = true;
+    const tokens = await refreshCustomerTokens();
 
-    const nextToken = await refreshToken();
-
-    if (!nextToken) {
+    if (!tokens) {
       return Promise.reject(error);
     }
 
-    originalRequest.headers = originalRequest.headers ?? {};
-    originalRequest.headers.Authorization = `Bearer ${nextToken}`;
+    originalRequest.headers.Authorization = `Bearer ${tokens.token}`;
+    originalRequest.headers['X-CSRF-Token'] = tokens.csrf_token;
 
     return customerApi(originalRequest);
   }
