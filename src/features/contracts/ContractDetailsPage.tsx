@@ -20,12 +20,12 @@ function getTone(status?: string | null) {
   return 'neutral';
 }
 
-function formatMoney(value: number | null | undefined): string {
+function formatMoney(value: string | number | null | undefined): string {
   if (value === null || value === undefined) {
     return '—';
   }
 
-  return `${value.toLocaleString('ru-RU')} ₽`;
+  return `${Number(value).toLocaleString('ru-RU')} ₽`;
 }
 
 function getRoleLabel(role?: string | null): string {
@@ -180,7 +180,11 @@ export function ContractDetailsPage() {
             <div className="profile-list">
               <div><span>По договору</span><strong>{formatMoney(contract.financial_summary.total_amount)}</strong></div>
               <div><span>Выполнено</span><strong>{formatMoney(contract.financial_summary.performed_amount)}</strong></div>
+              <div><span>Выставлено</span><strong>{formatMoney(contract.financial_summary.invoiced_amount)}</strong></div>
               <div><span>Оплачено</span><strong>{formatMoney(contract.financial_summary.paid_amount)}</strong></div>
+              <div><span>Возвращено</span><strong>{formatMoney(contract.financial_summary.refunded_amount)}</strong></div>
+              <div><span>Задолженность</span><strong>{formatMoney(contract.financial_summary.debt_amount)}</strong></div>
+              <div><span>Переплата</span><strong>{formatMoney(contract.financial_summary.overpayment_amount)}</strong></div>
               <div><span>Остаток</span><strong>{formatMoney(contract.financial_summary.remaining_amount)}</strong></div>
               <div><span>Аванс</span><strong>{formatMoney(contract.financial_summary.advance_amount)}</strong></div>
               <div><span>Удержание</span><strong>{formatMoney(contract.financial_summary.warranty_retention_amount)}</strong></div>

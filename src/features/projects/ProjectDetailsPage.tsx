@@ -35,12 +35,12 @@ const initialInvitationForm: InvitationFormState = {
   message: '',
 };
 
-function formatMoney(value?: number | null) {
+function formatMoney(value?: string | number | null) {
   if (value === null || value === undefined) {
     return 'Сумма уточняется';
   }
 
-  return `${value.toLocaleString('ru-RU')} ₽`;
+  return `${Number(value).toLocaleString('ru-RU')} ₽`;
 }
 
 function getTimelineLink(item: ProjectTimelineItem): string | null {

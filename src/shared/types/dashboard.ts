@@ -106,12 +106,16 @@ export interface AttentionFeedItem {
 }
 
 export interface FinanceTotals {
-  total_amount: number;
-  performed_amount: number;
-  paid_amount: number;
-  remaining_amount: number;
-  advance_amount: number;
-  retention_amount: number;
+  total_amount: string;
+  performed_amount: string;
+  invoiced_amount: string;
+  paid_amount: string;
+  refunded_amount: string;
+  debt_amount: string;
+  overpayment_amount: string;
+  remaining_amount: string;
+  advance_amount: string;
+  retention_amount: string;
 }
 
 export interface FinanceProjectSummary {
@@ -121,11 +125,11 @@ export interface FinanceProjectSummary {
   };
   totals: FinanceTotals;
   deviation: {
-    planned_budget: number | null;
-    contracts_total: number;
-    delta: number | null;
-    performed_vs_paid_delta: number;
-    payment_delay_amount: number;
+    planned_budget: string | null;
+    contracts_total: string;
+    delta: string | null;
+    performed_vs_paid_delta: string;
+    payment_delay_amount: string;
     problem_flags: string[];
   };
 }
@@ -323,23 +327,31 @@ export interface CustomerContractItem {
   date: string | null;
   start_date: string | null;
   end_date: string | null;
-  total_amount: number | null;
-  performed_amount: number;
-  paid_amount: number;
-  remaining_amount: number | null;
+  total_amount: string | null;
+  performed_amount: string;
+  invoiced_amount: string;
+  paid_amount: string;
+  refunded_amount: string;
+  debt_amount: string;
+  overpayment_amount: string;
+  remaining_amount: string | null;
   is_self_execution: boolean;
   contract_category: string | null;
   customer: CustomerContractParty | null;
   contract_side?: CustomerContractSideSummary | null;
   current_organization_role?: string | null;
   financial_summary?: {
-    total_amount: number | null;
-    performed_amount: number;
-    paid_amount: number;
-    remaining_amount: number | null;
-    advance_amount: number | null;
-    planned_advance_amount: number | null;
-    warranty_retention_amount: number | null;
+    total_amount: string | null;
+    performed_amount: string;
+    invoiced_amount: string;
+    paid_amount: string;
+    refunded_amount: string;
+    debt_amount: string;
+    overpayment_amount: string;
+    remaining_amount: string | null;
+    advance_amount: string | null;
+    planned_advance_amount: string | null;
+    warranty_retention_amount: string | null;
   };
   agreements_summary?: {
     count: number;
