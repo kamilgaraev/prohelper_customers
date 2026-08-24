@@ -5,12 +5,15 @@ import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { usePermissions } from '@shared/contexts/PermissionsContext';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 
-function formatMoney(value?: number | null): string {
+function formatMoney(value?: string | number | null): string {
   if (value === null || value === undefined) {
     return 'Сумма уточняется';
   }
 
-  return `${value.toLocaleString('ru-RU')} ₽`;
+  return `${Number(value).toLocaleString('ru-RU', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} ₽`;
 }
 
 export function FinancePage() {
@@ -38,7 +41,7 @@ export function FinancePage() {
       <SectionHeading
         eyebrow="Finance"
         title="Финансы заказчика"
-        description="Сводка по договорам: сумма, выполнение, оплаты, остаток, авансы и удержания по всем проектам."
+        description="Сводка по договорам: выполнение, выставленные счета, оплаты, возвраты и задолженность по всем проектам."
       />
 
       {error ? <div className="form-error">{error}</div> : null}
@@ -55,8 +58,24 @@ export function FinancePage() {
               <strong>{formatMoney(value.totals.performed_amount)}</strong>
             </div>
             <div>
+              <span>Выставлено</span>
+              <strong>{formatMoney(value.totals.invoiced_amount)}</strong>
+            </div>
+            <div>
               <span>Оплачено</span>
               <strong>{formatMoney(value.totals.paid_amount)}</strong>
+            </div>
+            <div>
+              <span>Возвращено</span>
+              <strong>{formatMoney(value.totals.refunded_amount)}</strong>
+            </div>
+            <div>
+              <span>Задолженность</span>
+              <strong>{formatMoney(value.totals.debt_amount)}</strong>
+            </div>
+            <div>
+              <span>Переплата</span>
+              <strong>{formatMoney(value.totals.overpayment_amount)}</strong>
             </div>
             <div>
               <span>Остаток</span>
@@ -80,7 +99,8 @@ export function FinancePage() {
                     <Link to={`/dashboard/projects/${item.project.id}`}>{item.project.name}</Link>
                   </strong>
                   <p>По договорам: {formatMoney(item.totals.total_amount)}</p>
-                  <p>Выполнено: {formatMoney(item.totals.performed_amount)} • Оплачено: {formatMoney(item.totals.paid_amount)}</p>
+                  <p>Выставлено: {formatMoney(item.totals.invoiced_amount)} • Оплачено: {formatMoney(item.totals.paid_amount)}</p>
+                  <p>Возвращено: {formatMoney(item.totals.refunded_amount)} • Задолженность: {formatMoney(item.totals.debt_amount)}</p>
                 </div>
                 <div className="row-actions">
                   <p className="conversation-preview">Отклонение: {formatMoney(item.deviation.delta)}</p>

@@ -7,12 +7,12 @@ import { AttentionFeedItem } from '@shared/types/dashboard';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
 
-function formatMoney(value?: number | null): string {
+function formatMoney(value?: string | number | null): string {
   if (value === null || value === undefined) {
     return 'Сумма уточняется';
   }
 
-  return `${value.toLocaleString('ru-RU')} ₽`;
+  return `${Number(value).toLocaleString('ru-RU')} ₽`;
 }
 
 function getPriorityTone(priority?: string): 'primary' | 'neutral' | 'success' | 'warning' {

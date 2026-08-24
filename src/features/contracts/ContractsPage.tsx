@@ -33,12 +33,12 @@ export function parseFilters(searchParams: URLSearchParams): CustomerContractsFi
   };
 }
 
-function formatMoney(value: number | null | undefined): string {
+function formatMoney(value: string | number | null | undefined): string {
   if (value === null || value === undefined) {
     return 'Сумма уточняется';
   }
 
-  return `${value.toLocaleString('ru-RU')} ₽`;
+  return `${Number(value).toLocaleString('ru-RU')} ₽`;
 }
 
 export function formatParties(contract: CustomerContractItem): string {
