@@ -55,6 +55,7 @@ export interface ResetPasswordPayload {
 
 export interface AuthSession {
   token: string;
+  csrfToken: string;
   user: CustomerUser;
   emailVerified: boolean;
   availableInterfaces: string[];
