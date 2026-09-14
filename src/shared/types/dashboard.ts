@@ -268,6 +268,12 @@ export interface CustomerProjectInvitationRegistryItem {
 }
 
 export type CustomerContractSideType =
+  | 'general_contract'
+  | 'contract'
+  | 'general_contractor_supply'
+  | 'subcontract'
+  | 'contractor_supply'
+  | 'subcontractor_supply'
   | 'customer_to_general_contractor'
   | 'general_contractor_to_contractor'
   | 'general_contractor_to_supplier'
