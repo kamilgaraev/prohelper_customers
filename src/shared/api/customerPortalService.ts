@@ -538,14 +538,68 @@ export const customerPortalService = {
     }
   },
 
+  async getExecutiveTransmittals(): Promise<CustomerExecutiveDocumentSet[]> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<CustomerExecutiveDocumentSet[]>>('/executive-documentation/transmittals');
+      return toList(extractApiData(response.data)).slice(0, 25);
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось загрузить передачи исполнительной документации'));
+    }
+  },
+
   async addExecutiveDocumentRemark(
     documentId: number,
-    payload: { body: string; severity?: 'minor' | 'major' | 'critical' }
+    payload: {
+      operation_key: string;
+      transmittal_id: number;
+      version_id: number;
+      body: string;
+      severity: 'minor' | 'major' | 'critical';
+    }
   ): Promise<void> {
     try {
       await customerApi.post<ApiEnvelope<unknown>>(`/executive-documentation/documents/${documentId}/remarks`, payload);
     } catch (error) {
-      throw new Error(resolveApiMessage(error, 'Не удалось добавить замечание к исполнительной документации'));
+      const requestError = new Error(resolveApiMessage(error, 'Не удалось добавить замечание к исполнительной документации')) as Error & { status?: number };
+      if (axios.isAxiosError(error)) {
+        requestError.status = error.response?.status;
+      }
+      throw requestError;
+    }
+  },
+
+  async actOnExecutiveTransmittal(
+    transmittalId: number,
+    action: 'receive' | 'return' | 'accept',
+    payload: { operation_key: string; expected_manifest_hash: string; comment?: string }
+  ): Promise<CustomerExecutiveDocumentSet> {
+    try {
+      const response = await customerApi.post<ApiEnvelope<CustomerExecutiveDocumentSet>>(
+        `/executive-documentation/transmittals/${transmittalId}/${action}`,
+        payload
+      );
+      return extractApiData(response.data);
+    } catch (error) {
+      const requestError = new Error(resolveApiMessage(error, 'Не удалось выполнить действие по передаче')) as Error & { status?: number };
+      if (axios.isAxiosError(error)) {
+        requestError.status = error.response?.status;
+      }
+      throw requestError;
+    }
+  },
+
+  async getExecutiveTransmittalVersionUrl(transmittalId: number, versionId: number): Promise<string> {
+    try {
+      const response = await customerApi.get<ApiEnvelope<{ url: string }>>(
+        `/executive-documentation/transmittals/${transmittalId}/versions/${versionId}/download`
+      );
+      const url = extractApiData(response.data).url;
+      if (!url) {
+        throw new Error('Сервер не вернул ссылку на файл');
+      }
+      return url;
+    } catch (error) {
+      throw new Error(resolveApiMessage(error, 'Не удалось открыть файл'));
     }
   },
 

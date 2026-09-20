@@ -12,7 +12,10 @@ vi.mock('@shared/api/customerPortalService', () => ({
     getDocuments: vi.fn(),
     getLegalDocuments: vi.fn(),
     getLegalDocumentUrl: vi.fn(),
-    getExecutiveDocumentSets: vi.fn(),
+    getExecutiveTransmittals: vi.fn(),
+    addExecutiveDocumentRemark: vi.fn(),
+    actOnExecutiveTransmittal: vi.fn(),
+    getExecutiveTransmittalVersionUrl: vi.fn(),
   },
 }));
 
@@ -38,7 +41,7 @@ describe('DocumentsPage legal archive', () => {
     document.body.innerHTML = '';
     vi.clearAllMocks();
     vi.mocked(customerPortalService.getDocuments).mockResolvedValue([]);
-    vi.mocked(customerPortalService.getExecutiveDocumentSets).mockResolvedValue([]);
+    vi.mocked(customerPortalService.getExecutiveTransmittals).mockResolvedValue([]);
   });
 
   it('shows only ready versions and opens a backend-issued URL in a safe pre-opened window', async () => {

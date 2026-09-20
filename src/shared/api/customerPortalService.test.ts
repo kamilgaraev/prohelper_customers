@@ -184,7 +184,7 @@ describe('customerPortalService contracts flow', () => {
     expect(response[0].defect_number).toBe('QD-77');
   });
 
-  it('loads transmitted executive documentation sets for customer documents center', async () => {
+  it('loads fixed executive documentation transmittals for customer documents center', async () => {
     mockedGet.mockResolvedValue({
       data: {
         success: true,
@@ -213,7 +213,7 @@ describe('customerPortalService contracts flow', () => {
                     id: 41,
                     document_id: 30,
                     version_number: '1.0',
-                    file_url: 'https://cdn.example.com/ed-1.pdf',
+                    content_hash: 'hash-1',
                   },
                 ],
               },
@@ -223,11 +223,11 @@ describe('customerPortalService contracts flow', () => {
       },
     });
 
-    const response = await customerPortalService.getExecutiveDocumentSets();
+    const response = await customerPortalService.getExecutiveTransmittals();
 
-    expect(mockedGet).toHaveBeenCalledWith('/executive-documentation/sets');
+    expect(mockedGet).toHaveBeenCalledWith('/executive-documentation/transmittals');
     expect(response).toHaveLength(1);
-    expect(response[0].documents?.[0].versions?.[0].file_url).toBe('https://cdn.example.com/ed-1.pdf');
+    expect(response[0].documents?.[0].versions?.[0].content_hash).toBe('hash-1');
   });
 
   it('uses real customer executive-documentation lifecycle endpoints', async () => {
@@ -246,28 +246,40 @@ describe('customerPortalService contracts flow', () => {
             transmittal: {
               id: 9,
               transmittal_number: 'TR-2026-0001',
-              acknowledged: true,
+              status: 'received',
+              manifest_hash: 'hash-1',
+              transmitted_at: '2026-06-01T10:00:00Z',
+              changed_document_ids: [],
+              available_actions: [],
             },
           },
         },
       });
 
     await customerPortalService.addExecutiveDocumentRemark(30, {
+      operation_key: 'remark-op-1',
+      transmittal_id: 9,
+      version_id: 41,
       body: 'Нужен паспорт партии бетона',
       severity: 'major',
     });
-    const acknowledged = await customerPortalService.acknowledgeExecutiveDocumentSet(18, {
-      comment: 'Получено',
+    const acknowledged = await customerPortalService.actOnExecutiveTransmittal(18, 'receive', {
+      operation_key: 'op-1',
+      expected_manifest_hash: 'hash-1',
     });
 
     expect(mockedPost).toHaveBeenNthCalledWith(1, '/executive-documentation/documents/30/remarks', {
+      operation_key: 'remark-op-1',
+      transmittal_id: 9,
+      version_id: 41,
       body: 'Нужен паспорт партии бетона',
       severity: 'major',
     });
-    expect(mockedPost).toHaveBeenNthCalledWith(2, '/executive-documentation/sets/18/acknowledge', {
-      comment: 'Получено',
+    expect(mockedPost).toHaveBeenNthCalledWith(2, '/executive-documentation/transmittals/18/receive', {
+      operation_key: 'op-1',
+      expected_manifest_hash: 'hash-1',
     });
-    expect(acknowledged.transmittal?.acknowledged).toBe(true);
+    expect(acknowledged.transmittal?.status).toBe('received');
   });
 
   it('uses customer change-management approval endpoints', async () => {
