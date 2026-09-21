@@ -223,11 +223,40 @@ describe('customerPortalService contracts flow', () => {
       },
     });
 
+    const response = await customerPortalService.getExecutiveTransmittals({ project_id: 4 });
+
+    expect(mockedGet).toHaveBeenCalledWith('/executive-documentation/transmittals', {
+      params: { project_id: 4 },
+    });
+    expect(response.items).toHaveLength(1);
+    expect(response.meta).toBeNull();
+    expect(response.items[0].documents?.[0].versions?.[0].content_hash).toBe('hash-1');
+  });
+
+  it('unwraps executive transmittal pagination meta when the server provides it', async () => {
+    mockedGet.mockResolvedValue({
+      data: {
+        success: true,
+        data: {
+          items: [
+            {
+              id: 18,
+              project_id: 4,
+              set_number: 'ED-1',
+              title: 'Комплект',
+              status: 'transmitted',
+              status_label: 'Передано',
+            },
+          ],
+          meta: { current_page: 2, per_page: 25, last_page: 3, total: 51 },
+        },
+      },
+    });
+
     const response = await customerPortalService.getExecutiveTransmittals();
 
-    expect(mockedGet).toHaveBeenCalledWith('/executive-documentation/transmittals');
-    expect(response).toHaveLength(1);
-    expect(response[0].documents?.[0].versions?.[0].content_hash).toBe('hash-1');
+    expect(response.items).toHaveLength(1);
+    expect(response.meta).toEqual({ current_page: 2, per_page: 25, last_page: 3, total: 51 });
   });
 
   it('uses real customer executive-documentation lifecycle endpoints', async () => {

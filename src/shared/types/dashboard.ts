@@ -679,6 +679,13 @@ export interface QualityDefectItem {
   updated_at: string | null;
 }
 
+export interface CustomerListMeta {
+  current_page: number;
+  per_page: number;
+  last_page: number;
+  total: number;
+}
+
 export interface CustomerExecutiveDocumentVersion {
   id: number;
   document_id: number;
@@ -730,9 +737,19 @@ export interface CustomerExecutiveDocumentSet {
     comment?: string | null;
     decision_comment?: string | null;
     previous_transmittal_id?: number | null;
-    changed_document_ids: number[];
+    changed_document_ids?: number[];
     available_actions: CustomerExecutiveTransmittalAction[];
   } | null;
+}
+
+export interface CustomerExecutiveTransmittalFilters {
+  project_id?: number;
+  page?: number;
+}
+
+export interface CustomerExecutiveTransmittalList {
+  items: CustomerExecutiveDocumentSet[];
+  meta: CustomerListMeta | null;
 }
 
 export interface CustomerRequestItem {

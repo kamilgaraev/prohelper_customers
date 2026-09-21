@@ -11,7 +11,10 @@ import {
   CustomerContractsFilters,
   CustomerContractItem,
   CustomerExecutiveDocumentSet,
+  CustomerExecutiveTransmittalFilters,
+  CustomerExecutiveTransmittalList,
   CustomerHandoverScope,
+  CustomerListMeta,
   CustomerIssueItem,
   CustomerLegalDocument,
   CustomerOrganizationSearchItem,
@@ -164,6 +167,43 @@ function sanitizeContractFilters(filters: CustomerContractsFilters = {}): Custom
 
 function toList<T>(items: T[] | null | undefined): T[] {
   return Array.isArray(items) ? items : [];
+}
+
+function parsePageMeta(value: unknown): CustomerListMeta | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const meta = value as Record<string, unknown>;
+  const currentPage = Number(meta.current_page);
+  const perPage = Number(meta.per_page);
+  const lastPage = Number(meta.last_page);
+  const total = Number(meta.total);
+  if (![currentPage, perPage, lastPage, total].every(Number.isFinite)) {
+    return null;
+  }
+
+  return {
+    current_page: currentPage,
+    per_page: perPage,
+    last_page: lastPage,
+    total,
+  };
+}
+
+function parseExecutiveTransmittalList(payload: unknown): CustomerExecutiveTransmittalList {
+  if (Array.isArray(payload)) {
+    return { items: toList(payload as CustomerExecutiveDocumentSet[]), meta: null };
+  }
+
+  if (payload && typeof payload === 'object') {
+    const record = payload as { items?: CustomerExecutiveDocumentSet[]; meta?: unknown };
+    if (Array.isArray(record.items)) {
+      return { items: toList(record.items), meta: parsePageMeta(record.meta) };
+    }
+  }
+
+  return { items: [], meta: null };
 }
 
 function extractItems<T>(payload: ItemsResponse<T>): T[] {
@@ -538,10 +578,14 @@ export const customerPortalService = {
     }
   },
 
-  async getExecutiveTransmittals(): Promise<CustomerExecutiveDocumentSet[]> {
+  async getExecutiveTransmittals(
+    filters: CustomerExecutiveTransmittalFilters = {}
+  ): Promise<CustomerExecutiveTransmittalList> {
     try {
-      const response = await customerApi.get<ApiEnvelope<CustomerExecutiveDocumentSet[]>>('/executive-documentation/transmittals');
-      return toList(extractApiData(response.data)).slice(0, 25);
+      const response = await customerApi.get<ApiEnvelope<unknown>>('/executive-documentation/transmittals', {
+        params: sanitizeParams(filters),
+      });
+      return parseExecutiveTransmittalList(extractApiData(response.data));
     } catch (error) {
       throw new Error(resolveApiMessage(error, 'Не удалось загрузить передачи исполнительной документации'));
     }
