@@ -47,13 +47,14 @@ export function ContractDetailsPage() {
   const canViewFinance = canAccess({ permission: 'customer.finance.view' });
   const contractId = Number(params.contractId);
   const backSearch = location.search || '';
+  const [contractRefresh, setContractRefresh] = useState(0);
   const [legalDocumentsRefresh, setLegalDocumentsRefresh] = useState(0);
   const [originalRegistration, setOriginalRegistration] = useState<number | null>(null);
   const [originalRegistrationError, setOriginalRegistrationError] = useState<string | null>(null);
   const [originalRegistrationSuccess, setOriginalRegistrationSuccess] = useState<string | null>(null);
   const originalRegistrations = useRef(new Map<number, { signed_at: string; idempotency_key: string }>());
-  const { value: contract, isLoading } = useAsyncValue(() => customerPortalService.getContract(contractId), [contractId]);
-  const { value: legalDocuments } = useAsyncValue(() => customerPortalService.getContractLegalDocuments(contractId), [contractId, legalDocumentsRefresh]);
+  const { value: contract, isLoading, error: contractError } = useAsyncValue(() => customerPortalService.getContract(contractId), [contractId, contractRefresh]);
+  const { value: legalDocuments, isLoading: legalDocumentsLoading, error: legalDocumentsError } = useAsyncValue(() => customerPortalService.getContractLegalDocuments(contractId), [contractId, legalDocumentsRefresh]);
 
   async function registerOriginal(signatureRequestId: number, lockVersion: number): Promise<void> {
     setOriginalRegistration(signatureRequestId);
@@ -106,7 +107,7 @@ export function ContractDetailsPage() {
     return <Navigate to="/dashboard/contracts" replace />;
   }
 
-  if (!isLoading && !contract) {
+  if (!isLoading && !contractError && !contract) {
     return <Navigate to="/dashboard/contracts" replace />;
   }
 
@@ -117,6 +118,13 @@ export function ContractDetailsPage() {
         title={contract?.number ?? 'Загрузка договора'}
         description="Карточка договора: стороны, проект, акты, оплаты, дополнительные соглашения и история изменений."
       />
+
+      {contractError ? (
+        <section className="plain-panel" role="alert">
+          <p>Не удалось загрузить договор. Проверьте соединение и попробуйте ещё раз.</p>
+          <button type="button" className="text-button" onClick={() => setContractRefresh((value) => value + 1)}>Повторить загрузку</button>
+        </section>
+      ) : null}
 
       <section className="detail-hero">
         <div>
@@ -151,13 +159,21 @@ export function ContractDetailsPage() {
         <div className="panel-head"><h3>Юридические документы</h3></div>
         {originalRegistrationError ? <div className="form-error" role="alert">{originalRegistrationError}</div> : null}
         {originalRegistrationSuccess ? <p className="form-success" role="status">{originalRegistrationSuccess}</p> : null}
-        {legalDocuments?.length ? legalDocuments.map((document) => (
+        {legalDocumentsLoading ? <p role="status">Загружаем юридические документы...</p> : null}
+        {!legalDocumentsLoading && legalDocumentsError ? (
+          <div role="alert">
+            <p>Не удалось загрузить юридические документы. Проверьте соединение и попробуйте ещё раз.</p>
+            <button type="button" className="text-button" onClick={() => setLegalDocumentsRefresh((value) => value + 1)}>Повторить загрузку</button>
+          </div>
+        ) : null}
+        {!legalDocumentsLoading && !legalDocumentsError && legalDocuments?.length ? legalDocuments.map((document) => (
             <div key={document.id} className="list-row">
             <div><strong>{document.title}</strong><p>{document.document_number ?? document.document_type}</p>{document.obligations?.map((obligation) => <p key={obligation.id}>{obligation.title} · {obligation.status}{obligation.due_at ? ` · до ${formatDate(obligation.due_at)}` : ''}</p>)}</div>
             {document.signature_requests?.filter((request) => request.method === 'paper').map((request) => <button key={request.id} type="button" className="text-button" disabled={originalRegistration === request.id} onClick={() => void registerOriginal(request.id, document.lock_version ?? 0)}>{originalRegistration === request.id ? 'Регистрируем...' : 'Зарегистрировать оригинал'}</button>)}
             {document.current_version?.processing_status === 'ready' ? <button type="button" className="text-button" onClick={() => void openLegalDocumentVersion(document.current_version!.id)}>Открыть</button> : null}
           </div>
-        )) : <p className="empty-state">Юридические документы по договору пока не опубликованы.</p>}
+        )) : null}
+        {!legalDocumentsLoading && !legalDocumentsError && legalDocuments && legalDocuments.length === 0 ? <p className="empty-state">Юридические документы по договору пока не опубликованы.</p> : null}
       </section>
 
       <section className="dual-columns">

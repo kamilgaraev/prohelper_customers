@@ -78,16 +78,13 @@ describe('ContractDetailsPage legal archive', () => {
       .mockRejectedValueOnce(new Error('Временная ошибка'))
       .mockResolvedValueOnce(undefined);
     const { container, root } = await renderPage();
-    const originalButton = Array.from(container.querySelectorAll('button'))
-      .find((button) => button.textContent === 'Зарегистрировать оригинал');
-
     await act(async () => {
-      originalButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Зарегистрировать оригинал')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       await Promise.resolve();
       await Promise.resolve();
     });
     await act(async () => {
-      originalButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Зарегистрировать оригинал')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -98,6 +95,54 @@ describe('ContractDetailsPage legal archive', () => {
     expect(calls[1][0]).toBe(31);
     expect(calls[1][1].idempotency_key).toBe(calls[0][1].idempotency_key);
     expect(calls[1][1].signed_at).toBe(calls[0][1].signed_at);
+    root.unmount();
+  });
+
+  it('shows a retryable archive error instead of the unpublished empty state', async () => {
+    vi.mocked(customerPortalService.getContractLegalDocuments)
+      .mockRejectedValueOnce(new Error('Сетевая ошибка'))
+      .mockResolvedValueOnce([]);
+    const { container, root } = await renderPage();
+
+    expect(container.textContent).toContain('Не удалось загрузить юридические документы');
+    expect(container.textContent).not.toContain('Юридические документы по договору пока не опубликованы');
+
+    const retryButton = Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Повторить загрузку');
+    await act(async () => {
+      retryButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toContain('Юридические документы по договору пока не опубликованы');
+    root.unmount();
+  });
+
+  it('keeps the contract URL and offers retry after a network failure', async () => {
+    vi.mocked(customerPortalService.getContract)
+      .mockRejectedValueOnce(new Error('Сетевая ошибка'))
+      .mockResolvedValueOnce({ id: 7, number: 'Д-7', subject: 'Договор', status: 'active' } as never);
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<MemoryRouter initialEntries={['/dashboard/contracts/7?tab=history']}><Routes><Route path="/dashboard/contracts/:contractId" element={<ContractDetailsPage />} /><Route path="/dashboard/contracts" element={<p>Список договоров</p>} /></Routes></MemoryRouter>);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toContain('Не удалось загрузить договор');
+    expect(container.textContent).not.toContain('Список договоров');
+    const retryButton = Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Повторить загрузку');
+    await act(async () => {
+      retryButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toContain('Д-7');
+    expect(container.textContent).not.toContain('Список договоров');
     root.unmount();
   });
 });
