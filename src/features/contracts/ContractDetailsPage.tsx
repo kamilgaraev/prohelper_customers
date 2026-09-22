@@ -107,8 +107,37 @@ export function ContractDetailsPage() {
     return <Navigate to="/dashboard/contracts" replace />;
   }
 
-  if (!isLoading && !contractError && !contract) {
-    return <Navigate to="/dashboard/contracts" replace />;
+  if (isLoading) {
+    return (
+      <div className="page-stack">
+        <SectionHeading eyebrow="Contract details" title="Загрузка договора" description="Загружаем сведения о договоре." />
+        <section className="plain-panel" role="status">Загружаем договор...</section>
+      </div>
+    );
+  }
+
+  if (contractError) {
+    return (
+      <div className="page-stack">
+        <SectionHeading eyebrow="Contract details" title="Не удалось загрузить договор" description="Проверьте соединение и попробуйте ещё раз." />
+        <section className="plain-panel" role="alert">
+          <button type="button" className="text-button" onClick={() => setContractRefresh((value) => value + 1)}>Повторить загрузку</button>
+          <p><Link to={`/dashboard/contracts${backSearch}`}>Назад к списку договоров</Link></p>
+        </section>
+      </div>
+    );
+  }
+
+  if (!contract) {
+    return (
+      <div className="page-stack">
+        <SectionHeading eyebrow="Contract details" title="Договор не найден" description="Договор недоступен или больше не существует." />
+        <section className="plain-panel">
+          <p>Проверьте список договоров или вернитесь к нему.</p>
+          <Link to={`/dashboard/contracts${backSearch}`}>Назад к списку договоров</Link>
+        </section>
+      </div>
+    );
   }
 
   return (
@@ -118,13 +147,6 @@ export function ContractDetailsPage() {
         title={contract?.number ?? 'Загрузка договора'}
         description="Карточка договора: стороны, проект, акты, оплаты, дополнительные соглашения и история изменений."
       />
-
-      {contractError ? (
-        <section className="plain-panel" role="alert">
-          <p>Не удалось загрузить договор. Проверьте соединение и попробуйте ещё раз.</p>
-          <button type="button" className="text-button" onClick={() => setContractRefresh((value) => value + 1)}>Повторить загрузку</button>
-        </section>
-      ) : null}
 
       <section className="detail-hero">
         <div>

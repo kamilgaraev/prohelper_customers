@@ -20,13 +20,13 @@ vi.mock('@shared/contexts/PermissionsContext', () => ({
   usePermissions: () => ({ canAccess: () => true }),
 }));
 
-async function renderPage(): Promise<{ container: HTMLDivElement; root: Root }> {
+async function renderPage(initialUrl = '/dashboard/contracts/7'): Promise<{ container: HTMLDivElement; root: Root }> {
   const container = document.createElement('div');
   document.body.appendChild(container);
   const root = createRoot(container);
 
   await act(async () => {
-    root.render(<MemoryRouter initialEntries={['/dashboard/contracts/7']}><Routes><Route path="/dashboard/contracts/:contractId" element={<ContractDetailsPage />} /></Routes></MemoryRouter>);
+    root.render(<MemoryRouter initialEntries={[initialUrl]}><Routes><Route path="/dashboard/contracts/:contractId" element={<ContractDetailsPage />} /></Routes></MemoryRouter>);
     await Promise.resolve();
     await Promise.resolve();
   });
@@ -134,6 +134,8 @@ describe('ContractDetailsPage legal archive', () => {
 
     expect(container.textContent).toContain('Не удалось загрузить договор');
     expect(container.textContent).not.toContain('Список договоров');
+    expect(container.textContent).not.toContain('Финансы и исполнение');
+    expect(container.querySelector('a[href="/dashboard/contracts?tab=history"]')).not.toBeNull();
     const retryButton = Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Повторить загрузку');
     await act(async () => {
       retryButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -143,6 +145,36 @@ describe('ContractDetailsPage legal archive', () => {
 
     expect(container.textContent).toContain('Д-7');
     expect(container.textContent).not.toContain('Список договоров');
+    root.unmount();
+  });
+
+  it('shows a distinct not-found state and keeps a link back to the filtered list', async () => {
+    vi.mocked(customerPortalService.getContract).mockResolvedValue(null);
+    const { container, root } = await renderPage('/dashboard/contracts/7?tab=history');
+
+    expect(container.textContent).toContain('Договор не найден');
+    expect(container.textContent).not.toContain('Список договоров');
+    expect(container.querySelector('a[href="/dashboard/contracts?tab=history"]')).not.toBeNull();
+    root.unmount();
+  });
+
+  it('shows a loading state before displaying contract placeholders', async () => {
+    let resolveContract: ((value: unknown) => void) | undefined;
+    vi.mocked(customerPortalService.getContract).mockReturnValue(new Promise((resolve) => { resolveContract = resolve; }) as never);
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<MemoryRouter initialEntries={['/dashboard/contracts/7']}><Routes><Route path="/dashboard/contracts/:contractId" element={<ContractDetailsPage />} /></Routes></MemoryRouter>);
+    });
+    expect(container.textContent).toContain('Загружаем договор...');
+    expect(container.textContent).not.toContain('Паспорт договора');
+
+    await act(async () => {
+      resolveContract?.({ id: 7, number: 'Д-7', subject: 'Договор', status: 'active' });
+      await Promise.resolve();
+    });
     root.unmount();
   });
 });
