@@ -679,13 +679,23 @@ export interface QualityDefectItem {
   updated_at: string | null;
 }
 
+export interface CustomerListMeta {
+  current_page: number;
+  per_page: number;
+  last_page: number;
+  total: number;
+}
+
 export interface CustomerExecutiveDocumentVersion {
   id: number;
   document_id: number;
   version_number: string;
-  file_url: string;
+  content_hash?: string | null;
   uploaded_at?: string | null;
 }
+
+export type CustomerExecutiveTransmittalStatus = 'sent' | 'received' | 'returned' | 'accepted';
+export type CustomerExecutiveTransmittalAction = 'receive' | 'return' | 'accept';
 
 export interface CustomerExecutiveDocument {
   id: number;
@@ -719,12 +729,27 @@ export interface CustomerExecutiveDocumentSet {
   transmittal?: {
     id: number;
     transmittal_number: string;
-    acknowledged?: boolean;
+    status: CustomerExecutiveTransmittalStatus;
+    manifest_hash: string;
+    transmitted_at: string;
+    received_at?: string | null;
+    decision_at?: string | null;
     comment?: string | null;
-    acknowledgement_comment?: string | null;
-    transmitted_at?: string | null;
-    acknowledged_at?: string | null;
+    decision_comment?: string | null;
+    previous_transmittal_id?: number | null;
+    changed_document_ids?: number[];
+    available_actions: CustomerExecutiveTransmittalAction[];
   } | null;
+}
+
+export interface CustomerExecutiveTransmittalFilters {
+  project_id?: number;
+  page?: number;
+}
+
+export interface CustomerExecutiveTransmittalList {
+  items: CustomerExecutiveDocumentSet[];
+  meta: CustomerListMeta | null;
 }
 
 export interface CustomerRequestItem {
