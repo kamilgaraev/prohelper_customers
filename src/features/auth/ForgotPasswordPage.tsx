@@ -30,7 +30,7 @@ export function ForgotPasswordPage() {
   return (
     <AuthLayout
       title="Восстановление доступа"
-      description="Отправим письмо со ссылкой для смены пароля в кабинете заказчика."
+      description="Отправим письмо со ссылкой для смены пароля в рабочем пространстве проекта."
       footer={
         <p>
           <Link to="/login">Вернуться ко входу</Link>
@@ -43,8 +43,8 @@ export function ForgotPasswordPage() {
           <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" />
         </label>
         {message ? <div className="form-success">{message}</div> : null}
-        {error ? <div className="form-error">{error}</div> : null}
-        <button type="submit" disabled={isSubmitting}>
+        {error ? <div className="form-error" role="alert">{error}</div> : null}
+        <button type="submit" className="primary-button" disabled={isSubmitting}>
           {isSubmitting ? 'Отправляем...' : 'Отправить ссылку'}
         </button>
       </form>

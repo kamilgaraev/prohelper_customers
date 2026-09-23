@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { customerPortalService } from '@shared/api/customerPortalService';
 import { usePermissions } from '@shared/contexts/PermissionsContext';
 import { CustomerProjectInvitationRegistryItem, ProjectPreview } from '@shared/types/dashboard';
+import { StateView } from '@shared/ui';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
 import { formatDate, formatPercent } from '@shared/utils/format';
@@ -21,6 +22,17 @@ function getInvitationTone(status: string): 'primary' | 'neutral' | 'success' | 
   }
 }
 
+function getInvitationLabel(status: string): string {
+  switch (status) {
+    case 'pending': return 'Ожидает ответа';
+    case 'accepted': return 'Принято';
+    case 'declined': return 'Отклонено';
+    case 'cancelled': return 'Отменено';
+    case 'expired': return 'Истекло';
+    default: return 'Обновлено';
+  }
+}
+
 export function ProjectsPage() {
   const { canAccess } = usePermissions();
   const canManageProjects = canAccess({ permission: 'customer.projects.manage' });
@@ -30,6 +42,7 @@ export function ProjectsPage() {
   const [invitations, setInvitations] = useState<CustomerProjectInvitationRegistryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refresh, setRefresh] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,6 +50,8 @@ export function ProjectsPage() {
     async function load() {
       setIsLoading(true);
       setError(null);
+      setProjects([]);
+      setInvitations([]);
 
       try {
         const [projectsResponse, invitationsResponse] = await Promise.all([
@@ -64,31 +79,40 @@ export function ProjectsPage() {
     return () => {
       cancelled = true;
     };
-  }, [canManageParticipants]);
+  }, [canManageParticipants, refresh]);
+
+  if (isLoading || error) {
+    return (
+      <div className="page-stack">
+        <SectionHeading eyebrow="Проекты" title="Портфель проектов заказчика" description="Проекты, их состояние и приглашения участников." />
+        {isLoading ? (
+          <StateView state="loading" title="Загружаем проекты" description="Получаем список проектов и приглашений." />
+        ) : (
+          <StateView state="error" description="Не удалось загрузить проекты. Проверьте соединение и попробуйте ещё раз." onRetry={() => setRefresh((value) => value + 1)} />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="page-stack">
       <SectionHeading
-        eyebrow="Projects"
+        eyebrow="Проекты"
         title="Портфель проектов заказчика"
         description="Создавайте проекты, контролируйте прогресс и управляйте приглашениями участников прямо из кабинета."
       />
 
       {canManageProjects ? (
         <div className="button-row">
-          <Link className="auth-link-button" to="/dashboard/projects/new">
+          <Link className="primary-button" to="/dashboard/projects/new">
             Создать проект
           </Link>
         </div>
       ) : null}
 
-      {error ? <div className="form-error">{error}</div> : null}
-
       <div className="project-rows">
-        {(isLoading ? new Array(3).fill(null) : projects).map((project, index) => (
-          <article key={project ? project.id : index} className="project-row">
-            {project ? (
-              <>
+        {projects.length ? projects.map((project) => (
+          <article key={project.id} className="project-row">
                 <div>
                   <StatusPill tone="neutral">{project.phase}</StatusPill>
                   <h3>{project.name}</h3>
@@ -102,12 +126,8 @@ export function ProjectsPage() {
                   <small>{project.leadLabel || 'Ответственный не указан'}</small>
                   <Link to={`/dashboard/projects/${project.id}`}>Открыть</Link>
                 </div>
-              </>
-            ) : (
-              <div className="metric-placeholder" />
-            )}
           </article>
-        ))}
+        )) : <StateView state="empty" title="Проекты пока не добавлены" description="Создайте проект или дождитесь приглашения от его участника." />}
       </div>
 
       {canManageParticipants ? (
@@ -128,12 +148,12 @@ export function ProjectsPage() {
                   </div>
                   <div className="row-actions">
                     <span>{formatDate(invitation.expires_at ?? invitation.accepted_at ?? invitation.cancelled_at)}</span>
-                    <StatusPill tone={getInvitationTone(invitation.status)}>{invitation.status}</StatusPill>
+                  <StatusPill tone={getInvitationTone(invitation.status)}>{getInvitationLabel(invitation.status)}</StatusPill>
                   </div>
                 </div>
               ))
             ) : (
-              <p className="empty-state">По проектам пока нет активных приглашений.</p>
+              <StateView state="empty" description="По проектам пока нет активных приглашений." />
             )}
           </div>
         </section>

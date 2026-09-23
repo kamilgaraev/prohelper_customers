@@ -6,6 +6,7 @@ import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { QualityDefectItem } from '@shared/types/dashboard';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
+import { StateView } from '@shared/ui';
 
 function statusTone(defect: QualityDefectItem): 'primary' | 'neutral' | 'success' | 'warning' {
   if (defect.workflow_summary?.meta?.overdue || defect.problem_flags?.some((flag) => flag.severity === 'warning')) {
@@ -38,10 +39,16 @@ export function QualityDefectsPage() {
     }),
     [searchParams]
   );
-  const { value: defects, error } = useAsyncValue(
+  const { value: defects, error, isLoading } = useAsyncValue(
     () => customerPortalService.getQualityDefects(filters),
     [searchParams.toString()]
   );
+  const queryKey = searchParams.toString();
+  const [settledQueryKey, setSettledQueryKey] = useState(queryKey);
+  useEffect(() => {
+    if (!isLoading && (error || defects !== null)) setSettledQueryKey(queryKey);
+  }, [defects, error, isLoading, queryKey]);
+  const contextLoading = isLoading || settledQueryKey !== queryKey;
   const [selectedDefect, setSelectedDefect] = useState<QualityDefectItem | null>(null);
 
   useEffect(() => {
@@ -68,12 +75,13 @@ export function QualityDefectsPage() {
   return (
     <div className="page-stack">
       <SectionHeading
-        eyebrow="Quality"
+        eyebrow="Качество"
         title="Дефекты качества"
         description="Реестр замечаний по качеству с ответственными, сроками устранения и текущим статусом проверки."
       />
 
-      {error ? <div className="form-error">{error}</div> : null}
+      {contextLoading ? <StateView state="loading" title="Загружаем дефекты" /> : null}
+      {!contextLoading && error ? <StateView state="error" description={error} /> : null}
 
       <section className="plain-panel">
         <div className="panel-head">
@@ -146,15 +154,16 @@ export function QualityDefectsPage() {
         <article className="plain-panel">
           <div className="panel-head">
             <h3>Реестр дефектов</h3>
-            <span>{defectOptions.length}</span>
+            <span>{contextLoading || error ? '—' : defectOptions.length}</span>
           </div>
           <div className="list-stack">
-            {defectOptions.length ? (
+            {!contextLoading && !error && defectOptions.length ? (
               defectOptions.map((defect) => (
                 <button
                   key={defect.id}
                   type="button"
-                  className="list-row"
+                  className="ui-button ui-button--ghost list-row list-row--surface"
+                  aria-pressed={selectedDefect?.id === defect.id}
                   onClick={() => {
                     setSelectedDefect(defect);
                     setSearchParams((current) => {
@@ -172,20 +181,18 @@ export function QualityDefectsPage() {
                   <StatusPill tone={statusTone(defect)}>{defect.status_label ?? defect.status}</StatusPill>
                 </button>
               ))
-            ) : (
-              <p className="empty-state">Дефектов по выбранным условиям пока нет.</p>
-            )}
+            ) : !contextLoading && !error ? <StateView state="empty" title="Дефектов нет" description="Измените фильтры или проверьте список позже." /> : null}
           </div>
         </article>
 
         <article className="plain-panel">
           <div className="panel-head">
-            <h3>{selectedDefect ? selectedDefect.defect_number : 'Детали дефекта'}</h3>
-            {selectedDefect ? (
+            <h3>{!contextLoading && !error && selectedDefect ? selectedDefect.defect_number : 'Детали дефекта'}</h3>
+            {!contextLoading && !error && selectedDefect ? (
               <StatusPill tone={statusTone(selectedDefect)}>{selectedDefect.status_label ?? selectedDefect.status}</StatusPill>
             ) : null}
           </div>
-          {selectedDefect ? (
+          {!contextLoading && !error && selectedDefect ? (
             <>
               <div className="profile-list">
                 <div>
@@ -231,9 +238,9 @@ export function QualityDefectsPage() {
                 </div>
               ) : null}
             </>
-          ) : (
+          ) : !contextLoading && !error ? (
             <p className="empty-state">Выберите дефект из реестра, чтобы посмотреть детали.</p>
-          )}
+          ) : null}
         </article>
       </section>
     </div>

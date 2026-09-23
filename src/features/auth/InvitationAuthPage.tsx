@@ -6,6 +6,7 @@ import { resolveApiMessage } from '@shared/api/apiHelpers';
 import { authService } from '@shared/api/authService';
 import { useAuth } from '@shared/contexts/AuthContext';
 import { InvitationResolution } from '@shared/types/auth';
+import { StateView } from '@shared/ui';
 
 type FormMode = 'login' | 'register';
 
@@ -26,6 +27,13 @@ export function InvitationAuthPage() {
   const [isDeclining, setIsDeclining] = useState(false);
 
   useEffect(() => {
+    setInvitation(null);
+    setSuccess(null);
+    setName('');
+    setCompanyName('');
+    setEmail('');
+    setPassword('');
+
     if (!token) {
       setError('Ссылка приглашения неполная.');
       setIsLoading(false);
@@ -157,8 +165,10 @@ export function InvitationAuthPage() {
     >
       {isLoading ? (
         <div className="auth-form">
-          <div className="form-success">Проверяем приглашение...</div>
+          <StateView state="loading" title="Проверяем приглашение" />
         </div>
+      ) : !invitation ? (
+        <StateView state="error" description={error ?? 'Приглашение не найдено или больше недоступно.'} />
       ) : (
         <form className="auth-form" onSubmit={handleSubmit}>
           {invitation ? (
@@ -195,11 +205,11 @@ export function InvitationAuthPage() {
           </label>
 
           {invitation?.nextAction === 'login_or_register' ? (
-            <div className="auth-grid">
-              <button type="button" onClick={() => setFormMode('login')}>
+          <div className="button-row">
+              <button type="button" className="secondary-button" aria-pressed={formMode === 'login'} onClick={() => setFormMode('login')}>
                 Войти
               </button>
-              <button type="button" onClick={() => setFormMode('register')}>
+              <button type="button" className="secondary-button" aria-pressed={formMode === 'register'} onClick={() => setFormMode('register')}>
                 Зарегистрироваться
               </button>
             </div>
@@ -208,7 +218,7 @@ export function InvitationAuthPage() {
           {success ? <div className="form-success">{success}</div> : null}
           {error ? <div className="form-error">{error}</div> : null}
 
-          <button type="submit" disabled={isSubmitting || !invitation || isInvitationUnavailable}>
+          <button type="submit" className="primary-button" disabled={isSubmitting || !invitation || isInvitationUnavailable}>
             {isSubmitting
               ? 'Сохраняем...'
               : formMode === 'login'
@@ -217,7 +227,7 @@ export function InvitationAuthPage() {
           </button>
 
           {invitation && invitation.status === 'pending' ? (
-            <button type="button" className="ghost-button" onClick={() => void handleDecline()} disabled={isDeclining}>
+            <button type="button" className="secondary-button" onClick={() => void handleDecline()} disabled={isDeclining}>
               {isDeclining ? 'Отклоняем...' : 'Отклонить приглашение'}
             </button>
           ) : null}

@@ -22,6 +22,7 @@ import { ProjectDetailsPage } from '@features/projects/ProjectDetailsPage';
 import { ProjectsPage } from '@features/projects/ProjectsPage';
 import { QualityDefectsPage } from '@features/quality/QualityDefectsPage';
 import { RequestsPage } from '@features/requests/RequestsPage';
+import { RfiPage } from '@features/rfi/RfiPage';
 import { RisksPage } from '@features/risks/RisksPage';
 import { ProfilePage } from '@features/profile/ProfilePage';
 import { SupportPage } from '@features/support/SupportPage';
@@ -57,6 +58,7 @@ export function AppRouter() {
         <Route path="quality-defects" element={<QualityDefectsPage />} />
         <Route path="handover" element={<HandoverPage />} />
         <Route path="requests" element={<RequestsPage />} />
+        <Route path="rfi" element={<RfiPage />} />
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="projects/new" element={<CreateProjectPage />} />
         <Route path="projects/:projectId" element={<ProjectDetailsPage />} />

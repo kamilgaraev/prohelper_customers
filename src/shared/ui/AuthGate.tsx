@@ -10,7 +10,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const { canAccess, isLoaded } = usePermissions();
 
   if (isLoading || !isLoaded) {
-    return <div className="screen-loader">Подготавливаем кабинет заказчика...</div>;
+    return <div className="screen-loader">Подготавливаем рабочее пространство проекта...</div>;
   }
 
   if (status === 'pending_verification') {

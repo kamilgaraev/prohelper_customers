@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import {
@@ -16,6 +16,7 @@ import {
 } from '@shared/types/dashboard';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
+import { Dialog, StateView } from '@shared/ui';
 
 type Severity = 'minor' | 'major' | 'critical';
 type ExecutiveAction =
@@ -52,9 +53,9 @@ export function DocumentsPage() {
   const [isSubmittingAction, setIsSubmittingAction] = useState(false);
   const [legalDocumentError, setLegalDocumentError] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
-  const { value: documents, error } = useAsyncValue(() => customerPortalService.getDocuments(), []);
+  const { value: documents, error, isLoading: documentsLoading } = useAsyncValue(() => customerPortalService.getDocuments(), []);
   const { value: projects } = useAsyncValue(() => customerPortalService.getProjects(), []);
-  const { value: legalDocuments, error: legalError } = useAsyncValue(() => customerPortalService.getLegalDocuments(), [refreshKey]);
+  const { value: legalDocuments, error: legalError, isLoading: legalLoading } = useAsyncValue(() => customerPortalService.getLegalDocuments(), [refreshKey]);
   const {
     value: transmittalPage,
     error: executiveError,
@@ -63,6 +64,14 @@ export function DocumentsPage() {
     () => customerPortalService.getExecutiveTransmittals(projectId ? { project_id: Number(projectId) } : {}),
     [refreshKey, projectId]
   );
+  const transmittalQueryKey = `${projectId}:${refreshKey}`;
+  const [settledTransmittalQueryKey, setSettledTransmittalQueryKey] = useState(transmittalQueryKey);
+  useEffect(() => {
+    if (!transmittalsLoading && (executiveError || transmittalPage !== null)) {
+      setSettledTransmittalQueryKey(transmittalQueryKey);
+    }
+  }, [executiveError, transmittalPage, transmittalQueryKey, transmittalsLoading]);
+  const transmittalContextLoading = transmittalsLoading || settledTransmittalQueryKey !== transmittalQueryKey;
 
   const transmittals = transmittalsLoading ? [] : (transmittalPage?.items ?? []);
   const transmittalsById = useMemo(() => {
@@ -189,15 +198,16 @@ export function DocumentsPage() {
 
   return (
     <div className="page-stack">
-      <SectionHeading eyebrow="Документы" title="Центр документов заказчика" description="Единая точка доступа к документам по проектам." />
+      <SectionHeading eyebrow="Документы" title="Центр документов проекта" description="Единая точка доступа к документам по доступным проектам." />
       <section className="list-surface">
-        {legalError ? <div className="form-error">{legalError}</div> : null}
+        {legalLoading ? <StateView state="loading" title="Загружаем юридические документы" /> : null}
+        {!legalLoading && legalError ? <StateView state="error" description={legalError} /> : null}
         {legalDocumentError ? (
           <div className="form-error" role="alert">
             {legalDocumentError}
           </div>
         ) : null}
-        {legalDocuments?.map((document: CustomerLegalDocument) => (
+        {!legalLoading && !legalError && legalDocuments?.map((document: CustomerLegalDocument) => (
           <article key={`legal-${document.id}`} className="list-row list-row--surface">
             <div>
               <strong>{document.title}</strong>
@@ -229,8 +239,9 @@ export function DocumentsPage() {
             </div>
           </article>
         ))}
-        {error ? <div className="form-error">{error}</div> : null}
-        {documents?.length ? (
+        {documentsLoading ? <StateView state="loading" title="Загружаем документы" /> : null}
+        {!documentsLoading && error ? <StateView state="error" description={error} /> : null}
+        {!documentsLoading && !error && documents?.length ? (
           documents.map((item) => (
             <article key={`document-${item.id}`} className="list-row list-row--surface">
               <div>
@@ -244,9 +255,8 @@ export function DocumentsPage() {
               </div>
             </article>
           ))
-        ) : (
-          <p className="empty-state">Документы пока не опубликованы.</p>
-        )}
+        ) : null}
+        {!legalLoading && !legalError && !documentsLoading && !error && !documents?.length ? <StateView state="empty" title="Документы пока не опубликованы" /> : null}
       </section>
 
       <SectionHeading
@@ -291,20 +301,20 @@ export function DocumentsPage() {
           </label>
         </div>
         <p className="conversation-preview">
-          {transmittalPage?.meta
+          {!transmittalContextLoading && transmittalPage?.meta
             ? `Страница ${transmittalPage.meta.current_page} из ${transmittalPage.meta.last_page}, всего ${transmittalPage.meta.total}.`
             : 'Сервер отдаёт последние передачи без постраничного просмотра. Поиск и статус применяются к уже загруженному списку.'}
         </p>
       </section>
       <section className="list-surface">
-        {executiveError ? <div className="form-error">{executiveError}</div> : null}
+        {!transmittalContextLoading && executiveError ? <StateView state="error" description={executiveError} /> : null}
         {downloadError ? (
           <div className="form-error" role="alert">
             {downloadError}
           </div>
         ) : null}
-        {transmittalsLoading ? <p className="conversation-preview">Загружаем комплекты выбранного проекта…</p> : null}
-        {visibleTransmittals.length ? (
+        {transmittalContextLoading ? <StateView state="loading" title="Загружаем комплекты выбранного проекта" /> : null}
+        {!transmittalContextLoading && !executiveError && visibleTransmittals.length ? (
           visibleTransmittals.map((set) => {
             const transmittal = set.transmittal;
             if (!transmittal) return null;
@@ -397,27 +407,30 @@ export function DocumentsPage() {
               </article>
             );
           })
-        ) : transmittalsLoading ? null : transmittals.length && (searchQuery || statusFilter) ? (
-          <p className="empty-state">По выбранным условиям среди загруженных передач ничего не найдено.</p>
-        ) : (
-          <p className="empty-state">Передачи исполнительной документации пока отсутствуют.</p>
-        )}
+        ) : !transmittalContextLoading && !executiveError && transmittals.length && (searchQuery || statusFilter) ? (
+          <StateView state="empty" title="Передачи не найдены" description="Измените поиск или статус." />
+        ) : !transmittalContextLoading && !executiveError ? (
+          <StateView state="empty" title="Передач пока нет" />
+        ) : null}
       </section>
 
-      {executiveAction ? (
-        <div className="modal-backdrop" role="presentation">
+      <Dialog
+        open={executiveAction !== null}
+        title={executiveAction?.type === 'remark'
+          ? `Замечание к полученной редакции ${executiveAction.versionNumber}`
+          : executiveAction
+            ? `${executiveAction.action === 'receive' ? 'Получение' : executiveAction.action === 'return' ? 'Возврат' : 'Принятие'} передачи`
+            : 'Действие с передачей'}
+        onClose={() => { if (!isSubmittingAction) setExecutiveAction(null); }}
+      >
+        {executiveAction ? (
           <form
-            className="modal-card"
+            className="inline-form"
             onSubmit={(event) => {
               event.preventDefault();
               void submitExecutiveAction();
             }}
           >
-            <h3>
-              {executiveAction.type === 'remark'
-                ? `Замечание к полученной редакции ${executiveAction.versionNumber}`
-                : `${executiveAction.action === 'receive' ? 'Получение' : executiveAction.action === 'return' ? 'Возврат' : 'Принятие'} передачи`}
-            </h3>
             {actionError ? (
               <div className="form-error" role="alert">
                 {actionError}
@@ -503,8 +516,8 @@ export function DocumentsPage() {
               </button>
             </div>
           </form>
-        </div>
-      ) : null}
+        ) : null}
+      </Dialog>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { customerPortalService } from '@shared/api/customerPortalService';
 import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { CustomerContractsFilters, CustomerContractItem } from '@shared/types/dashboard';
+import { Button, Field, Panel, StateView } from '@shared/ui';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
 
@@ -17,6 +18,19 @@ function getTone(status: string) {
   }
 
   return 'neutral';
+}
+
+function getStatusLabel(status: string, label?: string | null): string {
+  if (label) return label;
+
+  switch (status) {
+    case 'draft': return 'Черновик';
+    case 'active': return 'Действует';
+    case 'completed': return 'Завершён';
+    case 'on_hold': return 'Приостановлен';
+    case 'terminated': return 'Расторгнут';
+    default: return 'Статус уточняется';
+  }
 }
 
 export function parseFilters(searchParams: URLSearchParams): CustomerContractsFilters {
@@ -65,17 +79,43 @@ export function formatRole(role?: string | null): string {
 export function ContractsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const filters = useMemo(() => parseFilters(searchParams), [searchParams]);
+  const [refresh, setRefresh] = useState(0);
   const [draftFilters, setDraftFilters] = useState<CustomerContractsFilters>(filters);
 
   useEffect(() => {
     setDraftFilters(filters);
   }, [filters]);
 
-  const { value: contractsResponse, error, isLoading } = useAsyncValue(
-    () => customerPortalService.getContracts(filters),
-    [searchParams.toString()]
-  );
-  const { value: projects } = useAsyncValue(() => customerPortalService.getProjects(), []);
+  const requestKey = `${searchParams.toString()}|${refresh}`;
+  const [contractResult, setContractResult] = useState<{
+    key: string;
+    value: Awaited<ReturnType<typeof customerPortalService.getContracts>> | null;
+    error: string | null;
+    isLoading: boolean;
+  }>({ key: '', value: null, error: null, isLoading: true });
+  const projectsResult = useAsyncValue(() => customerPortalService.getProjects(), []);
+  const contractsResponse = contractResult.key === requestKey ? contractResult.value : null;
+  const error = contractResult.key === requestKey ? contractResult.error : null;
+  const isLoading = contractResult.key !== requestKey || contractResult.isLoading;
+
+  useEffect(() => {
+    let cancelled = false;
+    setContractResult({ key: requestKey, value: null, error: null, isLoading: true });
+
+    void customerPortalService.getContracts(filters).then((value) => {
+      if (!cancelled) {
+        setContractResult({ key: requestKey, value, error: null, isLoading: false });
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setContractResult({ key: requestKey, value: null, error: 'Не удалось загрузить договоры. Проверьте соединение и повторите попытку.', isLoading: false });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [filters, requestKey]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -101,27 +141,27 @@ export function ContractsPage() {
   return (
     <div className="page-stack">
       <SectionHeading
-        eyebrow="Contracts"
+        eyebrow="Договоры"
         title="Договоры заказчика"
         description="Показываем только те договоры, где ваша организация участвует как заказчик. Здесь можно отфильтровать список и открыть карточку договора."
       />
 
-      <section className="plain-panel">
+      <Panel className="plain-panel">
         <div className="panel-head">
           <h3>Фильтры</h3>
         </div>
-        <form className="profile-list" onSubmit={handleSubmit}>
-          <label>
-            <span>Поиск</span>
+        <form className="form-grid form-grid--two" onSubmit={handleSubmit}>
+          <Field label="Поиск" htmlFor="contracts-search">
             <input
+              id="contracts-search"
               value={draftFilters.search ?? ''}
               onChange={(event) => setDraftFilters((prev) => ({ ...prev, search: event.target.value }))}
               placeholder="Номер или предмет договора"
             />
-          </label>
-          <label>
-            <span>Проект</span>
+          </Field>
+          <Field label="Проект" htmlFor="contracts-project">
             <select
+              id="contracts-project"
               value={draftFilters.project_id ?? ''}
               onChange={(event) =>
                 setDraftFilters((prev) => ({
@@ -131,16 +171,16 @@ export function ContractsPage() {
               }
             >
               <option value="">Все проекты</option>
-              {projects?.map((project) => (
+              {projectsResult.value?.map((project) => (
                 <option key={project.id} value={project.id}>
                   {project.name}
                 </option>
               ))}
             </select>
-          </label>
-          <label>
-            <span>Статус</span>
+          </Field>
+          <Field label="Статус" htmlFor="contracts-status">
             <select
+              id="contracts-status"
               value={draftFilters.status ?? ''}
               onChange={(event) => setDraftFilters((prev) => ({ ...prev, status: event.target.value || undefined }))}
             >
@@ -151,10 +191,10 @@ export function ContractsPage() {
               <option value="on_hold">На паузе</option>
               <option value="terminated">Расторгнут</option>
             </select>
-          </label>
-          <label>
-            <span>Исполнитель</span>
+          </Field>
+          <Field label="Исполнитель" htmlFor="contracts-contractor">
             <input
+              id="contracts-contractor"
               value={draftFilters.contractor_search ?? ''}
               onChange={(event) =>
                 setDraftFilters((prev) => ({
@@ -164,26 +204,26 @@ export function ContractsPage() {
               }
               placeholder="Название исполнителя"
             />
-          </label>
-          <label>
-            <span>Дата от</span>
+          </Field>
+          <Field label="Дата от" htmlFor="contracts-date-from">
             <input
+              id="contracts-date-from"
               type="date"
               value={draftFilters.date_from ?? ''}
               onChange={(event) => setDraftFilters((prev) => ({ ...prev, date_from: event.target.value || undefined }))}
             />
-          </label>
-          <label>
-            <span>Дата до</span>
+          </Field>
+          <Field label="Дата до" htmlFor="contracts-date-to">
             <input
+              id="contracts-date-to"
               type="date"
               value={draftFilters.date_to ?? ''}
               onChange={(event) => setDraftFilters((prev) => ({ ...prev, date_to: event.target.value || undefined }))}
             />
-          </label>
-          <label>
-            <span>На странице</span>
+          </Field>
+          <Field label="На странице" htmlFor="contracts-per-page">
             <select
+              id="contracts-per-page"
               value={draftFilters.per_page ?? 10}
               onChange={(event) =>
                 setDraftFilters((prev) => ({ ...prev, per_page: Number(event.target.value), page: 1 }))
@@ -193,18 +233,18 @@ export function ContractsPage() {
               <option value={10}>10</option>
               <option value={20}>20</option>
             </select>
-          </label>
+          </Field>
           <div>
             <span>&nbsp;</span>
-            <button type="submit">Применить</button>
+            <Button variant="primary" type="submit">Применить фильтры</Button>
           </div>
         </form>
-      </section>
+      </Panel>
 
-      <section className="list-surface">
-        {error ? <div className="form-error">{error}</div> : null}
-        {isLoading ? <p className="empty-state">Загружаем договоры...</p> : null}
-        {!isLoading && contractsResponse?.items.length ? (
+      <Panel className="list-surface" aria-live="polite">
+        {isLoading ? <StateView state="loading" title="Загружаем договоры" /> : null}
+        {!isLoading && error ? <StateView state="error" description={error} onRetry={() => setRefresh((value) => value + 1)} /> : null}
+        {!isLoading && !error && contractsResponse?.items.length ? (
           <>
             {contractsResponse.items.map((contract) => (
               <article key={contract.id} className="list-row list-row--surface">
@@ -223,7 +263,7 @@ export function ContractsPage() {
                 <div className="row-actions">
                   <p className="conversation-preview">{formatMoney(contract.total_amount)}</p>
                   <StatusPill tone={getTone(contract.status)}>
-                    {contract.status_label ?? contract.status}
+                    {getStatusLabel(contract.status, contract.status_label)}
                   </StatusPill>
                 </div>
               </article>
@@ -237,28 +277,28 @@ export function ContractsPage() {
                 <p>Всего договоров: {contractsResponse.meta.total}</p>
               </div>
               <div className="row-actions">
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
                   onClick={() => handlePageChange(contractsResponse.meta.current_page - 1)}
                   disabled={contractsResponse.meta.current_page <= 1}
                 >
                   Назад
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
+                  variant="secondary"
                   onClick={() => handlePageChange(contractsResponse.meta.current_page + 1)}
                   disabled={contractsResponse.meta.current_page >= contractsResponse.meta.last_page}
                 >
                   Далее
-                </button>
+                </Button>
               </div>
             </div>
           </>
         ) : null}
-        {!isLoading && !contractsResponse?.items.length ? (
-          <p className="empty-state">По выбранным фильтрам договоры не найдены.</p>
+        {!isLoading && !error && contractsResponse && !contractsResponse.items.length ? (
+          <StateView state="empty" title="Договоры не найдены" description="Измените фильтры или очистите часть параметров поиска." />
         ) : null}
-      </section>
+      </Panel>
     </div>
   );
 }

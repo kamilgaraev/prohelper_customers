@@ -5,6 +5,7 @@ import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { getAdminEntryUrl, hasAdminInterface } from '@shared/utils/interfaceAccess';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
+import { StateView } from '@shared/ui';
 
 const roleLabels: Record<string, string> = {
   customer_owner: 'Руководитель',
@@ -18,20 +19,22 @@ const roleLabels: Record<string, string> = {
 };
 
 export function ProfilePage() {
-  const { value: user, error } = useAsyncValue(() => customerPortalService.getProfile(), []);
+  const { value: user, error, isLoading } = useAsyncValue(() => customerPortalService.getProfile(), []);
   const canOpenAdmin = hasAdminInterface(user?.interfaces);
 
   return (
     <div className="page-stack">
       <SectionHeading
-        eyebrow="Profile"
+        eyebrow="Профиль"
         title="Профиль пользователя"
         description="Данные аккаунта, роли текущего пользователя и доступные рабочие разделы."
       />
 
-      {error ? <div className="form-error">{error}</div> : null}
+      {isLoading ? <StateView state="loading" title="Загружаем профиль" /> : null}
+      {!isLoading && error ? <StateView state="error" description={error} /> : null}
+      {!isLoading && !error && !user ? <StateView state="empty" title="Профиль недоступен" description="Обновите страницу или войдите в кабинет заново." /> : null}
 
-      <section className="dual-columns">
+      {!isLoading && !error && user ? <section className="dual-columns">
         <article className="plain-panel">
           <div className="panel-head">
             <h3>Текущий пользователь</h3>
@@ -63,19 +66,19 @@ export function ProfilePage() {
           <div className="profile-list">
             <div>
               <span>Тип аккаунта</span>
-              <strong>{user?.accountType ?? 'organization'}</strong>
+              <strong>{user?.accountType === 'organization' ? 'Организация' : user?.accountType === 'individual' ? 'Частное лицо' : 'Участник проекта'}</strong>
             </div>
             <div>
               <span>Главная роль</span>
-              <strong>{user?.role ? (roleLabels[user.role] ?? user.role) : 'Наблюдатель'}</strong>
+              <strong>{user?.role ? (roleLabels[user.role] ?? 'Дополнительная роль') : 'Наблюдатель'}</strong>
             </div>
             <div>
               <span>Роли</span>
-              <strong>{user?.roles?.map((role) => roleLabels[role] ?? role).join(', ') ?? '—'}</strong>
+              <strong>{user?.roles?.map((role) => roleLabels[role] ?? 'Дополнительная роль').join(', ') ?? '—'}</strong>
             </div>
             <div>
               <span>Разделы</span>
-              <StatusPill tone="success">{user?.interfaces?.join(', ') ?? 'customer'}</StatusPill>
+              <StatusPill tone="success">{'Кабинет участника' + (canOpenAdmin ? ', админка' : '')}</StatusPill>
             </div>
           </div>
 
@@ -86,7 +89,7 @@ export function ProfilePage() {
             </a>
           ) : null}
         </article>
-      </section>
+      </section> : null}
     </div>
   );
 }

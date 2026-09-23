@@ -7,6 +7,7 @@ import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { CustomerIssueItem } from '@shared/types/dashboard';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
+import { StateView } from '@shared/ui';
 
 function parseAttachments(value: string) {
   return value
@@ -30,9 +31,16 @@ export function IssuesPage() {
     }),
     [searchParams]
   );
-  const { value: issues, error } = useAsyncValue(() => customerPortalService.getIssues(filters), [searchParams.toString(), reloadToken]);
+  const { value: issues, error, isLoading } = useAsyncValue(() => customerPortalService.getIssues(filters), [searchParams.toString(), reloadToken]);
+  const queryKey = `${searchParams.toString()}:${reloadToken}`;
+  const [settledQueryKey, setSettledQueryKey] = useState(queryKey);
+  useEffect(() => {
+    if (!isLoading && (error || issues !== null)) setSettledQueryKey(queryKey);
+  }, [error, isLoading, issues, queryKey]);
+  const contextLoading = isLoading || settledQueryKey !== queryKey;
   const [selectedIssue, setSelectedIssue] = useState<CustomerIssueItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [commentBody, setCommentBody] = useState('');
   const [formState, setFormState] = useState({
     title: '',
@@ -72,6 +80,7 @@ export function IssuesPage() {
   const submitIssue = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmitting(true);
+    setActionError(null);
 
     try {
       const created = await customerPortalService.createIssue({
@@ -92,6 +101,8 @@ export function IssuesPage() {
         next.set('selected', String(created.id));
         return next;
       });
+    } catch (submitError) {
+      setActionError(submitError instanceof Error ? submitError.message : 'Не удалось создать замечание.');
     } finally {
       setSubmitting(false);
     }
@@ -105,12 +116,15 @@ export function IssuesPage() {
     }
 
     setSubmitting(true);
+    setActionError(null);
 
     try {
       const updated = await customerPortalService.addIssueComment(selectedIssue.id, { body: commentBody });
       setSelectedIssue(updated);
       setCommentBody('');
       setReloadToken((value) => value + 1);
+    } catch (submitError) {
+      setActionError(submitError instanceof Error ? submitError.message : 'Не удалось добавить комментарий.');
     } finally {
       setSubmitting(false);
     }
@@ -122,11 +136,14 @@ export function IssuesPage() {
     }
 
     setSubmitting(true);
+    setActionError(null);
 
     try {
       const updated = await customerPortalService.resolveIssue(selectedIssue.id, status);
       setSelectedIssue(updated);
       setReloadToken((value) => value + 1);
+    } catch (submitError) {
+      setActionError(submitError instanceof Error ? submitError.message : 'Не удалось изменить статус замечания.');
     } finally {
       setSubmitting(false);
     }
@@ -135,12 +152,14 @@ export function IssuesPage() {
   return (
     <div className="page-stack">
       <SectionHeading
-        eyebrow="Issues"
+        eyebrow="Замечания"
         title="Замечания и разногласия"
         description="Структурированный контур замечаний по проекту, договору, акту или документу со сроками ответа, историей и текущим статусом."
       />
 
-      {error ? <div className="form-error">{error}</div> : null}
+      {contextLoading ? <StateView state="loading" title="Загружаем замечания" /> : null}
+      {!contextLoading && error ? <StateView state="error" description={error} /> : null}
+      {actionError ? <div className="form-error" role="alert">{actionError}</div> : null}
 
       <section className="plain-panel">
         <div className="panel-head">
@@ -192,15 +211,16 @@ export function IssuesPage() {
         <article className="plain-panel">
           <div className="panel-head">
             <h3>Реестр замечаний</h3>
-            <span>{issueOptions.length}</span>
+            <span>{contextLoading || error ? '—' : issueOptions.length}</span>
           </div>
           <div className="list-stack">
-            {issueOptions.length ? (
+            {!contextLoading && !error && issueOptions.length ? (
               issueOptions.map((issue) => (
-                <button
+              <button
                   key={issue.id}
                   type="button"
-                  className="list-row"
+                  className="ui-button ui-button--ghost list-row list-row--surface"
+                  aria-pressed={selectedIssue?.id === issue.id}
                   onClick={() => {
                     setSelectedIssue(issue);
                     setSearchParams((current) => {
@@ -220,9 +240,7 @@ export function IssuesPage() {
                   </StatusPill>
                 </button>
               ))
-            ) : (
-              <p className="empty-state">Замечаний по выбранным условиям пока нет.</p>
-            )}
+            ) : !contextLoading && !error ? <StateView state="empty" title="Замечаний нет" description="По выбранным условиям замечания не найдены." /> : null}
           </div>
         </article>
 
@@ -259,7 +277,7 @@ export function IssuesPage() {
                   rows={3}
                 />
               </label>
-              <button type="submit" disabled={submitting}>
+              <button type="submit" className="primary-button" disabled={submitting}>
                 Создать замечание
               </button>
             </form>
@@ -269,7 +287,7 @@ export function IssuesPage() {
         </article>
       </section>
 
-      {selectedIssue ? (
+      {!contextLoading && !error && selectedIssue ? (
         <section className="plain-panel">
           <div className="panel-head">
             <h3>{selectedIssue.title}</h3>
@@ -347,15 +365,15 @@ export function IssuesPage() {
                   <span>Комментарий</span>
                   <textarea value={commentBody} onChange={(event) => setCommentBody(event.target.value)} rows={3} />
                 </label>
-                <button type="submit" disabled={submitting}>
+                <button type="submit" className="primary-button" disabled={submitting}>
                   Добавить комментарий
                 </button>
               </form>
               <div className="row-actions">
-                <button type="button" onClick={() => void resolveIssue('resolved')} disabled={submitting}>
+                <button type="button" className="primary-button" onClick={() => void resolveIssue('resolved')} disabled={submitting}>
                   Отметить решенным
                 </button>
-                <button type="button" onClick={() => void resolveIssue('rejected')} disabled={submitting}>
+                <button type="button" className="secondary-button" onClick={() => void resolveIssue('rejected')} disabled={submitting}>
                   Отклонить
                 </button>
               </div>

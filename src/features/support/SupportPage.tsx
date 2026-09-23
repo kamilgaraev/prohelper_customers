@@ -5,9 +5,10 @@ import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { SupportRequestItem } from '@shared/types/dashboard';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
+import { StateView } from '@shared/ui';
 
 export function SupportPage() {
-  const { value: initialRequests, error: loadError } = useAsyncValue(
+  const { value: initialRequests, error: loadError, isLoading: requestsLoading } = useAsyncValue(
     () => customerPortalService.getSupportRequests(),
     []
   );
@@ -60,9 +61,9 @@ export function SupportPage() {
   return (
     <div className="page-stack">
       <SectionHeading
-        eyebrow="Support"
+        eyebrow="Поддержка"
         title="Поддержка платформы"
-        description="Отправляйте запросы по customer-порталу и сразу отслеживайте историю обращений в одном экране."
+        description="Отправляйте вопросы о работе кабинета и отслеживайте историю обращений."
       />
       <section className="support-grid">
         <article className="plain-panel">
@@ -70,7 +71,7 @@ export function SupportPage() {
             <h3>Что можно отправить</h3>
           </div>
           <ul className="simple-list">
-            <li>Проблемы с доступом в customer-портал</li>
+            <li>Проблемы с доступом в кабинет</li>
             <li>Вопросы по документам, согласованиям и уведомлениям</li>
             <li>Ошибки в отображении данных и работе интерфейса</li>
           </ul>
@@ -80,27 +81,21 @@ export function SupportPage() {
             <h3>Форма обращения</h3>
           </div>
           <form className="inline-form" onSubmit={handleSubmit}>
-            <input
-              type="text"
-              placeholder="Тема обращения"
-              value={subject}
-              onChange={(event) => setSubject(event.target.value)}
-            />
-            <input
-              type="text"
-              placeholder="Телефон для обратной связи"
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
-            />
-            <textarea
-              rows={5}
-              placeholder="Опишите проблему или запрос"
-              value={message}
-              onChange={(event) => setMessage(event.target.value)}
-            />
+            <label>
+              Тема обращения
+              <input type="text" required value={subject} onChange={(event) => setSubject(event.target.value)} />
+            </label>
+            <label>
+              Телефон для обратной связи
+              <input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} />
+            </label>
+            <label>
+              Описание обращения
+              <textarea rows={5} required value={message} onChange={(event) => setMessage(event.target.value)} />
+            </label>
             {error ? <div className="form-error">{error}</div> : null}
             {success ? <div className="form-success">{success}</div> : null}
-            <button type="submit" disabled={isSubmitting}>
+            <button type="submit" className="primary-button" disabled={isSubmitting || requestsLoading}>
               {isSubmitting ? 'Отправляем...' : 'Отправить запрос'}
             </button>
           </form>
@@ -112,8 +107,9 @@ export function SupportPage() {
           <h3>История обращений</h3>
           <span>{requests.length}</span>
         </div>
-        {loadError ? <div className="form-error">{loadError}</div> : null}
-        {requests.length ? (
+        {requestsLoading ? <StateView state="loading" title="Загружаем историю обращений" /> : null}
+        {!requestsLoading && loadError ? <StateView state="error" description={loadError} /> : null}
+        {!requestsLoading && !loadError && requests.length ? (
           requests.map((item) => (
             <article key={item.id} className="list-row list-row--surface support-history-row">
               <div className="support-history-copy">
@@ -129,9 +125,10 @@ export function SupportPage() {
               </div>
             </article>
           ))
-        ) : (
-          <p className="empty-state">История обращений пока пуста. Новые запросы появятся здесь сразу после отправки.</p>
-        )}
+        ) : null}
+        {!requestsLoading && !loadError && !requests.length ? (
+          <StateView state="empty" title="Обращений пока нет" description="Новые запросы появятся здесь после отправки." />
+        ) : null}
       </section>
     </div>
   );

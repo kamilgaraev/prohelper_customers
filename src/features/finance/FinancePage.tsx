@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { customerPortalService } from '@shared/api/customerPortalService';
-import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { usePermissions } from '@shared/contexts/PermissionsContext';
+import { useAsyncValue } from '@shared/hooks/useAsyncValue';
+import { Panel, StateView } from '@shared/ui';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 
 function formatMoney(value?: string | number | null): string {
@@ -19,16 +21,17 @@ function formatMoney(value?: string | number | null): string {
 export function FinancePage() {
   const { canAccess } = usePermissions();
   const canViewFinance = canAccess({ permission: 'customer.finance.view' });
-  const { value, error } = useAsyncValue(
+  const [refresh, setRefresh] = useState(0);
+  const { value, error, isLoading } = useAsyncValue(
     () => (canViewFinance ? customerPortalService.getFinanceSummary() : Promise.resolve(null)),
-    [canViewFinance]
+    [canViewFinance, refresh]
   );
 
   if (!canViewFinance) {
     return (
       <div className="page-stack">
         <SectionHeading
-          eyebrow="Finance"
+          eyebrow="Финансы"
           title="Финансы"
           description="Финансовая сводка доступна только ролям с правом просмотра денег и отклонений."
         />
@@ -36,63 +39,86 @@ export function FinancePage() {
     );
   }
 
+  if (isLoading) {
+    return (
+      <div className="page-stack">
+        <SectionHeading eyebrow="Финансы" title="Финансы заказчика" description="Загружаем сводку по договорам и проектам." />
+        <StateView state="loading" title="Загружаем финансовую сводку" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="page-stack">
+        <SectionHeading eyebrow="Финансы" title="Не удалось загрузить финансовую сводку" description="Проверьте соединение и попробуйте ещё раз." />
+        <StateView state="error" description="Данные не обновились. Повторите загрузку." onRetry={() => setRefresh((value) => value + 1)} />
+      </div>
+    );
+  }
+
+  if (!value) {
+    return (
+      <div className="page-stack">
+        <SectionHeading eyebrow="Финансы" title="Сводка пока недоступна" description="Вернитесь позже или обратитесь к администратору проекта." />
+        <StateView state="empty" description="Финансовые данные пока не опубликованы." />
+      </div>
+    );
+  }
+
   return (
     <div className="page-stack">
       <SectionHeading
-        eyebrow="Finance"
+        eyebrow="Финансы"
         title="Финансы заказчика"
         description="Сводка по договорам: выполнение, выставленные счета, оплаты, возвраты и задолженность по всем проектам."
       />
 
-      {error ? <div className="form-error">{error}</div> : null}
-
-      {value ? (
-        <>
-          <section className="profile-list plain-panel">
-            <div>
+      <Panel className="metrics-grid">
+            <div className="metric-tile">
               <span>Сумма договоров</span>
               <strong>{formatMoney(value.totals.total_amount)}</strong>
             </div>
-            <div>
+            <div className="metric-tile">
               <span>Выполнено</span>
               <strong>{formatMoney(value.totals.performed_amount)}</strong>
             </div>
-            <div>
+            <div className="metric-tile">
               <span>Выставлено</span>
               <strong>{formatMoney(value.totals.invoiced_amount)}</strong>
             </div>
-            <div>
+            <div className="metric-tile">
               <span>Оплачено</span>
               <strong>{formatMoney(value.totals.paid_amount)}</strong>
             </div>
-            <div>
+            <div className="metric-tile">
               <span>Возвращено</span>
               <strong>{formatMoney(value.totals.refunded_amount)}</strong>
             </div>
-            <div>
+            <div className="metric-tile">
               <span>Задолженность</span>
               <strong>{formatMoney(value.totals.debt_amount)}</strong>
             </div>
-            <div>
+            <div className="metric-tile">
               <span>Переплата</span>
               <strong>{formatMoney(value.totals.overpayment_amount)}</strong>
             </div>
-            <div>
+            <div className="metric-tile">
               <span>Остаток</span>
               <strong>{formatMoney(value.totals.remaining_amount)}</strong>
             </div>
-            <div>
+            <div className="metric-tile">
               <span>Авансы</span>
               <strong>{formatMoney(value.totals.advance_amount)}</strong>
             </div>
-            <div>
+            <div className="metric-tile">
               <span>Удержания</span>
               <strong>{formatMoney(value.totals.retention_amount)}</strong>
             </div>
-          </section>
+      </Panel>
 
-          <section className="list-surface">
-            {value.projects.map((item) => (
+      <Panel className="list-surface">
+            {value.projects.length ? value.projects.map((item) => (
               <article key={item.project.id} className="list-row list-row--surface">
                 <div>
                   <strong>
@@ -107,10 +133,8 @@ export function FinancePage() {
                   <Link to={`/dashboard/contracts?project_id=${item.project.id}`}>Договоры проекта</Link>
                 </div>
               </article>
-            ))}
-          </section>
-        </>
-      ) : null}
+            )) : <StateView state="empty" title="Нет проектов с финансовыми данными" description="Когда по доступным проектам появятся договоры, они отобразятся здесь." />}
+      </Panel>
     </div>
   );
 }

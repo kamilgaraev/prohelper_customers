@@ -33,6 +33,12 @@ async function renderPage(): Promise<{ container: HTMLDivElement; root: Root }> 
   return { container, root };
 }
 
+async function flushPage(): Promise<void> {
+  await act(async () => {
+    for (let index = 0; index < 5; index += 1) await Promise.resolve();
+  });
+}
+
 describe('ApprovalsPage change management contour', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
@@ -89,7 +95,7 @@ describe('ApprovalsPage change management contour', () => {
     });
 
     expect(customerPortalService.approveChangeRequest).toHaveBeenCalledWith(5, {
-      comment: 'Согласовано из кабинета заказчика',
+      comment: 'Согласовано из кабинета участника',
     });
 
     root.unmount();
@@ -125,22 +131,18 @@ describe('ApprovalsPage change management contour', () => {
 
     const { container, root } = await renderPage();
     await act(async () => { await Promise.resolve(); });
-    const buttons = Array.from(container.querySelectorAll('button.button--primary'));
+    expect(container.querySelectorAll('button.button--primary')).toHaveLength(3);
 
-    expect(buttons).toHaveLength(3);
-
-    await act(async () => {
-      buttons[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
-      await Promise.resolve();
-    });
-    await act(async () => {
-      buttons[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
-      await Promise.resolve();
-    });
-    await act(async () => {
-      buttons[2].dispatchEvent(new MouseEvent('click', { bubbles: true }));
-      await Promise.resolve();
-    });
+    for (const label of ['Согласовать', 'Отклонить', 'Вернуть на доработку']) {
+      const button = Array.from(container.querySelectorAll('button.button--primary'))
+        .find((candidate) => candidate.textContent?.includes(label));
+      expect(button).toBeTruthy();
+      await act(async () => {
+        button?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        await Promise.resolve();
+      });
+      await flushPage();
+    }
 
     expect(customerPortalService.decideLegalDocumentStep).toHaveBeenNthCalledWith(1, 101, 'approve', {
       instance_lock_version: 4,
@@ -151,7 +153,7 @@ describe('ApprovalsPage change management contour', () => {
     expect(customerPortalService.decideLegalDocumentStep).toHaveBeenNthCalledWith(2, 102, 'reject', {
       instance_lock_version: 4,
       step_lock_version: 3,
-      comment: 'Решение направлено из кабинета заказчика',
+      comment: 'Решение направлено из кабинета участника',
       idempotency_key: 'decision-key',
     });
     expect(customerPortalService.decideLegalDocumentStep).toHaveBeenNthCalledWith(3, 103, 'return', {
@@ -201,10 +203,13 @@ describe('ApprovalsPage change management contour', () => {
       await Promise.resolve();
     });
     expect(container.textContent).toContain('Временная ошибка');
+    await flushPage();
+    const retryButton = container.querySelector('button.button--primary');
     await act(async () => {
-      button?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      retryButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       await Promise.resolve();
     });
+    await flushPage();
 
     expect(customerPortalService.decideLegalDocumentStep).toHaveBeenCalledTimes(2);
     expect(customerPortalService.decideLegalDocumentStep).toHaveBeenNthCalledWith(1, 201, 'approve', expect.objectContaining({ idempotency_key: 'retry-key' }));

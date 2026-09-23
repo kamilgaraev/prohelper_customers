@@ -10,6 +10,7 @@ import {
   ProjectTimelineItem,
   ProjectWorkspaceResponse,
 } from '@shared/types/dashboard';
+import { Button, Panel, StateView } from '@shared/ui';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
 import { formatDate } from '@shared/utils/format';
@@ -69,6 +70,17 @@ function getInvitationTone(invitation: CustomerProjectParticipantInvitation): 'p
   }
 }
 
+function getInvitationLabel(status: string): string {
+  switch (status) {
+    case 'pending': return 'Ожидает ответа';
+    case 'accepted': return 'Принято';
+    case 'declined': return 'Отклонено';
+    case 'cancelled': return 'Отменено';
+    case 'expired': return 'Истекло';
+    default: return 'Обновлено';
+  }
+}
+
 function getAvailabilityLabel(item: CustomerOrganizationSearchItem): string {
   if (item.availability_status.already_participant) {
     return 'Уже участвует в проекте';
@@ -87,17 +99,23 @@ export function ProjectDetailsPage() {
   const { canAccess } = usePermissions();
   const canViewFinance = canAccess({ permission: 'customer.finance.view' });
 
-  const [workspace, setWorkspace] = useState<ProjectWorkspaceResponse['workspace'] | null>(null);
-  const [participantsState, setParticipantsState] = useState<CustomerProjectParticipantsResponse | null>(null);
+  const [workspaceData, setWorkspace] = useState<ProjectWorkspaceResponse['workspace'] | null>(null);
+  const [workspaceProjectId, setWorkspaceProjectId] = useState<number | null>(null);
+  const [participantsData, setParticipantsState] = useState<CustomerProjectParticipantsResponse | null>(null);
+  const [participantsProjectId, setParticipantsProjectId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refresh, setRefresh] = useState(0);
   const [invitationForm, setInvitationForm] = useState<InvitationFormState>(initialInvitationForm);
   const [invitationError, setInvitationError] = useState<string | null>(null);
+  const [organizationSearchError, setOrganizationSearchError] = useState<string | null>(null);
   const [isSubmittingInvitation, setIsSubmittingInvitation] = useState(false);
   const [invitationActionId, setInvitationActionId] = useState<number | null>(null);
   const [organizationQuery, setOrganizationQuery] = useState('');
   const [organizationSearchResults, setOrganizationSearchResults] = useState<CustomerOrganizationSearchItem[]>([]);
   const [isSearchingOrganizations, setIsSearchingOrganizations] = useState(false);
+  const workspace = workspaceProjectId === projectId ? workspaceData : null;
+  const participantsState = participantsProjectId === projectId ? participantsData : null;
 
   useEffect(() => {
     if (!Number.isFinite(projectId)) {
@@ -118,7 +136,9 @@ export function ProjectDetailsPage() {
 
         if (!cancelled) {
           setWorkspace(nextWorkspace);
+          setWorkspaceProjectId(projectId);
           setParticipantsState(nextParticipants);
+          setParticipantsProjectId(projectId);
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -136,14 +156,19 @@ export function ProjectDetailsPage() {
     return () => {
       cancelled = true;
     };
-  }, [projectId]);
+  }, [projectId, refresh]);
 
   useEffect(() => {
     if (!participantsState?.can_manage || organizationQuery.trim().length < 2) {
       setOrganizationSearchResults([]);
+      setOrganizationSearchError(null);
+      setIsSearchingOrganizations(false);
       return;
     }
 
+    setOrganizationSearchResults([]);
+    setOrganizationSearchError(null);
+    setIsSearchingOrganizations(true);
     let cancelled = false;
 
     async function runSearch() {
@@ -160,7 +185,7 @@ export function ProjectDetailsPage() {
         }
       } catch (searchError) {
         if (!cancelled) {
-          setInvitationError(searchError instanceof Error ? searchError.message : 'Не удалось выполнить поиск организаций.');
+          setOrganizationSearchError('Не удалось выполнить поиск организаций. Проверьте соединение и измените запрос, чтобы попробовать снова.');
         }
       } finally {
         if (!cancelled) {
@@ -191,13 +216,33 @@ export function ProjectDetailsPage() {
     return <Navigate to="/dashboard/projects" replace />;
   }
 
-  if (!isLoading && !workspace) {
+  if (isLoading || (workspaceProjectId !== projectId && !error)) {
+    return (
+      <div className="page-stack">
+        <SectionHeading eyebrow="Проект" title="Загружаем проект" description="Получаем сведения о проекте и его участниках." />
+        <StateView state="loading" title="Загружаем данные проекта" />
+      </div>
+    );
+  }
+
+  if (error || !workspace) {
+    if (error) {
+      return (
+        <div className="page-stack">
+          <SectionHeading eyebrow="Проект" title="Не удалось загрузить проект" description="Проверьте соединение и попробуйте ещё раз." />
+          <StateView state="error" description="Проверьте соединение и попробуйте ещё раз." onRetry={() => setRefresh((value) => value + 1)} />
+          <Link className="secondary-button" to="/dashboard/projects">К списку проектов</Link>
+        </div>
+      );
+    }
+
     return <Navigate to="/dashboard/projects" replace />;
   }
 
   async function reloadParticipants() {
     const nextParticipants = await customerPortalService.getProjectParticipants(projectId);
     setParticipantsState(nextParticipants);
+    setParticipantsProjectId(projectId);
   }
 
   function handleSelectOrganization(item: CustomerOrganizationSearchItem) {
@@ -275,14 +320,12 @@ export function ProjectDetailsPage() {
   return (
     <div className="page-stack">
       <SectionHeading
-        eyebrow="Project workspace"
+        eyebrow="Проекты"
         title={project?.name ?? 'Загрузка проекта'}
         description="Паспорт проекта, ключевые договоры, документы, согласования, риски и участники на одном экране."
       />
 
-      {error ? <div className="form-error">{error}</div> : null}
-
-      <section className="detail-hero">
+      <Panel className="detail-hero">
         <div>
           <StatusPill tone="primary">{project?.phase ?? 'Подготовка данных'}</StatusPill>
           <h2>{project?.location ?? 'Адрес уточняется'}</h2>
@@ -291,6 +334,8 @@ export function ProjectDetailsPage() {
             <Link to={`/dashboard/issues?project_id=${projectId}`}>Создать замечание</Link>
             {' • '}
             <Link to={`/dashboard/requests?project_id=${projectId}`}>Создать запрос</Link>
+            {' • '}
+            <Link to={`/dashboard/rfi?project_id=${projectId}`}>Вопросы по проекту</Link>
             {' • '}
             <Link to={`/dashboard/contracts?project_id=${projectId}`}>Открыть договоры проекта</Link>
           </p>
@@ -309,7 +354,7 @@ export function ProjectDetailsPage() {
             <strong>{workspace?.summary.approvals_total ?? '—'}</strong>
           </div>
         </div>
-      </section>
+      </Panel>
 
       <section className="dual-columns">
         <article className="plain-panel">
@@ -401,7 +446,7 @@ export function ProjectDetailsPage() {
         </section>
       ) : null}
 
-      <section className="plain-panel plain-panel--wide">
+      <Panel className="plain-panel plain-panel--wide">
         <div className="panel-head">
           <h3>Участники проекта</h3>
           {canManageParticipants ? <StatusPill tone="primary">Можно приглашать</StatusPill> : null}
@@ -427,7 +472,7 @@ export function ProjectDetailsPage() {
               </div>
             ))
           ) : (
-            <p className="empty-state">Участники проекта еще не добавлены.</p>
+            <StateView state="empty" description="Участники проекта еще не добавлены." />
           )}
         </div>
 
@@ -448,32 +493,30 @@ export function ProjectDetailsPage() {
                   </p>
                 </div>
                 <div className="row-actions">
-                  <StatusPill tone={getInvitationTone(invitation)}>{invitation.status}</StatusPill>
+                  <StatusPill tone={getInvitationTone(invitation)}>{getInvitationLabel(invitation.status)}</StatusPill>
                   {canManageParticipants && invitation.status === 'pending' ? (
                     <div className="button-row button-row--compact">
-                      <button
-                        type="button"
-                        className="ghost-button"
+                      <Button
+                        variant="ghost"
                         disabled={invitationActionId === invitation.id}
                         onClick={() => void handleInvitationAction(invitation.id, 'resend')}
                       >
                         Повторить
-                      </button>
-                      <button
-                        type="button"
-                        className="ghost-button"
+                      </Button>
+                      <Button
+                        variant="ghost"
                         disabled={invitationActionId === invitation.id}
                         onClick={() => void handleInvitationAction(invitation.id, 'cancel')}
                       >
                         Отменить
-                      </button>
+                      </Button>
                     </div>
                   ) : null}
                 </div>
               </div>
             ))
           ) : (
-            <p className="empty-state">Активных приглашений по проекту пока нет.</p>
+            <StateView state="empty" description="Активных приглашений по проекту пока нет." />
           )}
         </div>
 
@@ -597,7 +640,9 @@ export function ProjectDetailsPage() {
             {organizationQuery.trim().length >= 2 ? (
               <div className="search-results">
                 {isSearchingOrganizations ? (
-                  <p className="empty-state">Ищем организации...</p>
+                  <StateView state="loading" title="Ищем организации" />
+                ) : organizationSearchError ? (
+                  <StateView state="error" description={organizationSearchError} />
                 ) : organizationSearchResults.length ? (
                   organizationSearchResults.map((item) => (
                     <button
@@ -621,16 +666,16 @@ export function ProjectDetailsPage() {
               </div>
             ) : null}
 
-            {invitationError ? <div className="form-error">{invitationError}</div> : null}
+            {invitationError ? <div className="form-error" role="alert">{invitationError}</div> : null}
 
             <div className="button-row">
-              <button type="submit" disabled={isSubmittingInvitation}>
+              <Button variant="primary" type="submit" disabled={isSubmittingInvitation}>
                 {isSubmittingInvitation ? 'Отправляем приглашение...' : 'Пригласить участника'}
-              </button>
+              </Button>
             </div>
           </form>
         ) : null}
-      </section>
+      </Panel>
 
       <section className="dual-columns">
         <article className="plain-panel">

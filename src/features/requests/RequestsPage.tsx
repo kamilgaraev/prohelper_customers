@@ -7,6 +7,7 @@ import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { CustomerRequestItem } from '@shared/types/dashboard';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
+import { StateView } from '@shared/ui';
 
 function parseAttachments(value: string) {
   return value
@@ -30,12 +31,19 @@ export function RequestsPage() {
     }),
     [searchParams]
   );
-  const { value: requests, error } = useAsyncValue(
+  const { value: requests, error, isLoading } = useAsyncValue(
     () => customerPortalService.getRequests(filters),
     [searchParams.toString(), reloadToken]
   );
+  const queryKey = searchParams.toString();
+  const [settledQueryKey, setSettledQueryKey] = useState(queryKey);
+  useEffect(() => {
+    if (!isLoading && (error || requests !== null)) setSettledQueryKey(queryKey);
+  }, [error, isLoading, queryKey, requests]);
+  const contextLoading = isLoading || settledQueryKey !== queryKey;
   const [selectedRequest, setSelectedRequest] = useState<CustomerRequestItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [commentBody, setCommentBody] = useState('');
   const [formState, setFormState] = useState({
     title: '',
@@ -73,6 +81,7 @@ export function RequestsPage() {
   const submitRequest = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmitting(true);
+    setActionError(null);
 
     try {
       const created = await customerPortalService.createRequest({
@@ -91,6 +100,8 @@ export function RequestsPage() {
         next.set('selected', String(created.id));
         return next;
       });
+    } catch (submitError) {
+      setActionError(submitError instanceof Error ? submitError.message : 'Не удалось создать запрос.');
     } finally {
       setSubmitting(false);
     }
@@ -104,12 +115,15 @@ export function RequestsPage() {
     }
 
     setSubmitting(true);
+    setActionError(null);
 
     try {
       const updated = await customerPortalService.addRequestComment(selectedRequest.id, { body: commentBody });
       setSelectedRequest(updated);
       setCommentBody('');
       setReloadToken((value) => value + 1);
+    } catch (submitError) {
+      setActionError(submitError instanceof Error ? submitError.message : 'Не удалось добавить комментарий.');
     } finally {
       setSubmitting(false);
     }
@@ -123,11 +137,14 @@ export function RequestsPage() {
     }
 
     setSubmitting(true);
+    setActionError(null);
 
     try {
       const updated = await customerPortalService.resolveRequest(selectedRequest.id, status);
       setSelectedRequest(updated);
       setReloadToken((value) => value + 1);
+    } catch (submitError) {
+      setActionError(submitError instanceof Error ? submitError.message : 'Не удалось изменить статус запроса.');
     } finally {
       setSubmitting(false);
     }
@@ -136,12 +153,14 @@ export function RequestsPage() {
   return (
     <div className="page-stack">
       <SectionHeading
-        eyebrow="Requests"
-        title="Запросы заказчика"
+        eyebrow="Запросы"
+        title="Запросы по проекту"
         description="Структурированные запросы вместо свободного чата: документы, пояснения, корректировки графика и условий."
       />
 
-      {error ? <div className="form-error">{error}</div> : null}
+      {contextLoading ? <StateView state="loading" title="Загружаем запросы" /> : null}
+      {!contextLoading && error ? <StateView state="error" description={error} /> : null}
+      {actionError ? <div className="form-error" role="alert">{actionError}</div> : null}
 
       <section className="plain-panel">
         <div className="panel-head">
@@ -166,7 +185,7 @@ export function RequestsPage() {
               <option value="new">Новые</option>
               <option value="accepted">Приняты</option>
               <option value="in_progress">В работе</option>
-              <option value="waiting_customer">Ждут решения заказчика</option>
+              <option value="waiting_customer">Ожидают решения</option>
               <option value="completed">Завершены</option>
               <option value="rejected">Отклонены</option>
             </select>
@@ -194,15 +213,16 @@ export function RequestsPage() {
         <article className="plain-panel">
           <div className="panel-head">
             <h3>Реестр запросов</h3>
-            <span>{requestOptions.length}</span>
+            <span>{contextLoading || error ? '—' : requestOptions.length}</span>
           </div>
           <div className="list-stack">
-            {requestOptions.length ? (
+            {!contextLoading && !error && requestOptions.length ? (
               requestOptions.map((item) => (
-                <button
+              <button
                   key={item.id}
                   type="button"
-                  className="list-row"
+                  className="ui-button ui-button--ghost list-row list-row--surface"
+                  aria-pressed={selectedRequest?.id === item.id}
                   onClick={() => {
                     setSelectedRequest(item);
                     setSearchParams((current) => {
@@ -222,9 +242,7 @@ export function RequestsPage() {
                   </StatusPill>
                 </button>
               ))
-            ) : (
-              <p className="empty-state">Запросов по выбранным условиям пока нет.</p>
-            )}
+            ) : !contextLoading && !error ? <StateView state="empty" title="Запросов нет" description="По выбранным условиям запросы не найдены." /> : null}
           </div>
         </article>
 
@@ -261,7 +279,7 @@ export function RequestsPage() {
                   rows={3}
                 />
               </label>
-              <button type="submit" disabled={submitting}>
+              <button type="submit" className="primary-button" disabled={submitting}>
                 Создать запрос
               </button>
             </form>
@@ -271,7 +289,7 @@ export function RequestsPage() {
         </article>
       </section>
 
-      {selectedRequest ? (
+      {!contextLoading && !error && selectedRequest ? (
         <section className="plain-panel">
           <div className="panel-head">
             <h3>{selectedRequest.title}</h3>
@@ -341,24 +359,24 @@ export function RequestsPage() {
                   <span>Комментарий</span>
                   <textarea value={commentBody} onChange={(event) => setCommentBody(event.target.value)} rows={3} />
                 </label>
-                <button type="submit" disabled={submitting}>
+                <button type="submit" className="primary-button" disabled={submitting}>
                   Добавить комментарий
                 </button>
               </form>
               <div className="row-actions">
-                <button type="button" onClick={() => void updateStatus('accepted')} disabled={submitting}>
+                <button type="button" className="secondary-button" onClick={() => void updateStatus('accepted')} disabled={submitting}>
                   Принять
                 </button>
-                <button type="button" onClick={() => void updateStatus('in_progress')} disabled={submitting}>
+                <button type="button" className="secondary-button" onClick={() => void updateStatus('in_progress')} disabled={submitting}>
                   В работу
                 </button>
-                <button type="button" onClick={() => void updateStatus('waiting_customer')} disabled={submitting}>
-                  Ждет решения заказчика
+                <button type="button" className="secondary-button" onClick={() => void updateStatus('waiting_customer')} disabled={submitting}>
+                  Ожидает решения
                 </button>
-                <button type="button" onClick={() => void updateStatus('completed')} disabled={submitting}>
+                <button type="button" className="primary-button" onClick={() => void updateStatus('completed')} disabled={submitting}>
                   Завершить
                 </button>
-                <button type="button" onClick={() => void updateStatus('rejected')} disabled={submitting}>
+                <button type="button" className="secondary-button" onClick={() => void updateStatus('rejected')} disabled={submitting}>
                   Отклонить
                 </button>
               </div>

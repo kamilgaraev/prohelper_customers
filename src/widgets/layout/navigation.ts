@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   LifeBuoy,
   MessageSquareText,
+  MessageCircleQuestion,
   ShieldAlert,
   UsersRound,
 } from 'lucide-react';
@@ -25,6 +26,7 @@ export const customerNavigation = [
   { to: '/dashboard/quality-defects', label: 'Дефекты качества', icon: ClipboardCheck },
   { to: '/dashboard/handover', label: 'Приемка зон', icon: ClipboardList },
   { to: '/dashboard/requests', label: 'Запросы', icon: FolderGit2 },
+  { to: '/dashboard/rfi', label: 'Вопросы по проекту', icon: MessageCircleQuestion },
   { to: '/dashboard/projects', label: 'Проекты', icon: FolderKanban },
   { to: '/dashboard/documents', label: 'Документы', icon: Files },
   { to: '/dashboard/approvals', label: 'Согласования', icon: CheckCheck },

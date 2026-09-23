@@ -4,6 +4,7 @@ import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import { customerPortalService } from '@shared/api/customerPortalService';
 import { usePermissions } from '@shared/contexts/PermissionsContext';
 import { useAsyncValue } from '@shared/hooks/useAsyncValue';
+import { Button, Panel, StateView } from '@shared/ui';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
 import { formatDate } from '@shared/utils/format';
@@ -18,6 +19,19 @@ function getTone(status?: string | null) {
   }
 
   return 'neutral';
+}
+
+function getStatusLabel(status: string, label?: string | null): string {
+  if (label) return label;
+
+  switch (status) {
+    case 'draft': return 'Черновик';
+    case 'active': return 'Действует';
+    case 'completed': return 'Завершён';
+    case 'on_hold': return 'Приостановлен';
+    case 'terminated': return 'Расторгнут';
+    default: return 'Статус уточняется';
+  }
 }
 
 function formatMoney(value: string | number | null | undefined): string {
@@ -107,11 +121,11 @@ export function ContractDetailsPage() {
     return <Navigate to="/dashboard/contracts" replace />;
   }
 
-  if (isLoading) {
+  if (isLoading || (contract !== null && contract?.id !== contractId)) {
     return (
       <div className="page-stack">
-        <SectionHeading eyebrow="Contract details" title="Загрузка договора" description="Загружаем сведения о договоре." />
-        <section className="plain-panel" role="status">Загружаем договор...</section>
+        <SectionHeading eyebrow="Договоры" title="Загрузка договора" description="Загружаем сведения о договоре." />
+        <StateView state="loading" title="Загружаем договор..." />
       </div>
     );
   }
@@ -119,11 +133,12 @@ export function ContractDetailsPage() {
   if (contractError) {
     return (
       <div className="page-stack">
-        <SectionHeading eyebrow="Contract details" title="Не удалось загрузить договор" description="Проверьте соединение и попробуйте ещё раз." />
-        <section className="plain-panel" role="alert">
-          <button type="button" className="text-button" onClick={() => setContractRefresh((value) => value + 1)}>Повторить загрузку</button>
+        <SectionHeading eyebrow="Договоры" title="Не удалось загрузить договор" description="Проверьте соединение и попробуйте ещё раз." />
+        <Panel className="plain-panel">
+          <StateView state="error" title="Не удалось загрузить договор" description="Проверьте соединение и повторите попытку." />
+          <Button variant="secondary" onClick={() => setContractRefresh((value) => value + 1)}>Повторить загрузку</Button>
           <p><Link to={`/dashboard/contracts${backSearch}`}>Назад к списку договоров</Link></p>
-        </section>
+        </Panel>
       </div>
     );
   }
@@ -131,11 +146,11 @@ export function ContractDetailsPage() {
   if (!contract) {
     return (
       <div className="page-stack">
-        <SectionHeading eyebrow="Contract details" title="Договор не найден" description="Договор недоступен или больше не существует." />
-        <section className="plain-panel">
-          <p>Проверьте список договоров или вернитесь к нему.</p>
+        <SectionHeading eyebrow="Договоры" title="Договор не найден" description="Договор недоступен или больше не существует." />
+        <Panel className="plain-panel">
+          <StateView state="empty" title="Договор не найден" description="Проверьте список договоров или вернитесь к нему." />
           <Link to={`/dashboard/contracts${backSearch}`}>Назад к списку договоров</Link>
-        </section>
+        </Panel>
       </div>
     );
   }
@@ -143,15 +158,15 @@ export function ContractDetailsPage() {
   return (
     <div className="page-stack">
       <SectionHeading
-        eyebrow="Contract details"
+        eyebrow="Договоры"
         title={contract?.number ?? 'Загрузка договора'}
         description="Карточка договора: стороны, проект, акты, оплаты, дополнительные соглашения и история изменений."
       />
 
-      <section className="detail-hero">
+      <Panel className="detail-hero">
         <div>
           <StatusPill tone={getTone(contract?.status)}>
-            {contract?.status_label ?? contract?.status ?? 'Подготовка данных'}
+            {getStatusLabel(contract.status, contract.status_label)}
           </StatusPill>
           <h2>{contract?.subject ?? 'Предмет договора уточняется'}</h2>
           <p>{contract?.contract_side?.display_label ?? 'Договор по проекту'}</p>
@@ -175,18 +190,18 @@ export function ContractDetailsPage() {
             <strong>{formatMoney(contract?.paid_amount)}</strong>
           </div>
         </div>
-      </section>
+      </Panel>
 
-      <section className="plain-panel">
+      <Panel className="plain-panel">
         <div className="panel-head"><h3>Юридические документы</h3></div>
         {originalRegistrationError ? <div className="form-error" role="alert">{originalRegistrationError}</div> : null}
         {originalRegistrationSuccess ? <p className="form-success" role="status">{originalRegistrationSuccess}</p> : null}
-        {legalDocumentsLoading ? <p role="status">Загружаем юридические документы...</p> : null}
+        {legalDocumentsLoading ? <StateView state="loading" title="Загружаем юридические документы" /> : null}
         {!legalDocumentsLoading && legalDocumentsError ? (
-          <div role="alert">
-            <p>Не удалось загрузить юридические документы. Проверьте соединение и попробуйте ещё раз.</p>
-            <button type="button" className="text-button" onClick={() => setLegalDocumentsRefresh((value) => value + 1)}>Повторить загрузку</button>
-          </div>
+          <>
+          <StateView state="error" title="Не удалось загрузить юридические документы" description="Проверьте соединение и попробуйте ещё раз." />
+          <Button variant="secondary" onClick={() => setLegalDocumentsRefresh((value) => value + 1)}>Повторить загрузку</Button>
+          </>
         ) : null}
         {!legalDocumentsLoading && !legalDocumentsError && legalDocuments?.length ? legalDocuments.map((document) => (
             <div key={document.id} className="list-row">
@@ -195,8 +210,8 @@ export function ContractDetailsPage() {
             {document.current_version?.processing_status === 'ready' ? <button type="button" className="text-button" onClick={() => void openLegalDocumentVersion(document.current_version!.id)}>Открыть</button> : null}
           </div>
         )) : null}
-        {!legalDocumentsLoading && !legalDocumentsError && legalDocuments && legalDocuments.length === 0 ? <p className="empty-state">Юридические документы по договору пока не опубликованы.</p> : null}
-      </section>
+        {!legalDocumentsLoading && !legalDocumentsError && legalDocuments && legalDocuments.length === 0 ? <StateView state="empty" title="Документы пока не опубликованы" description="Юридические документы по договору пока не опубликованы." /> : null}
+      </Panel>
 
       <section className="dual-columns">
         <article className="plain-panel">
@@ -257,6 +272,9 @@ export function ContractDetailsPage() {
                 <StatusPill tone="primary">{formatMoney(item.amount)}</StatusPill>
               </div>
             ))}
+            {!contract?.acts_summary?.items.length && !contract?.payments_summary?.items.length ? (
+              <StateView state="empty" description="Акты и оплаты по договору пока не опубликованы." />
+            ) : null}
           </div>
         </article>
 
@@ -281,6 +299,9 @@ export function ContractDetailsPage() {
                 <span>{formatDate(item.date)}</span>
               </div>
             ))}
+            {!contract?.agreements_summary?.items.length && !contract?.timeline?.length ? (
+              <StateView state="empty" description="Дополнительных соглашений и событий пока нет." />
+            ) : null}
           </div>
         </article>
       </section>

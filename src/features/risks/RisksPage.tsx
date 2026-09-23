@@ -4,6 +4,7 @@ import { customerPortalService } from '@shared/api/customerPortalService';
 import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
+import { StateView } from '@shared/ui';
 
 export function RisksPage() {
   const { value: dashboard, error, isLoading } = useAsyncValue(() => customerPortalService.getDashboard(), []);
@@ -11,14 +12,15 @@ export function RisksPage() {
   return (
     <div className="page-stack">
       <SectionHeading
-        eyebrow="Risk center"
+        eyebrow="Риски"
         title="Риски и контроль"
         description="Единый экран для просрочек, зависших документов, актов без решения и финансовых отклонений по доступным проектам."
       />
 
-      {error ? <div className="form-error">{error}</div> : null}
+      {!isLoading && error ? <StateView state="error" description={error} /> : null}
+      {!isLoading && !error && !dashboard ? <StateView state="empty" title="Сводка недоступна" description="Попробуйте открыть раздел позже." /> : null}
 
-      <section className="plain-panel">
+      {!isLoading && !error && dashboard ? <section className="plain-panel">
         <div className="panel-head">
           <h3>Сводка по рискам</h3>
           <span>{dashboard?.project_risks.length ?? 0}</span>
@@ -45,11 +47,11 @@ export function RisksPage() {
             </strong>
           </div>
         </div>
-      </section>
+      </section> : null}
 
       <section className="list-surface">
-        {isLoading ? <p className="empty-state">Собираем сигналы по проектам...</p> : null}
-        {!isLoading && dashboard?.project_risks.length ? (
+        {isLoading ? <StateView state="loading" title="Собираем сигналы по проектам" /> : null}
+        {!isLoading && !error && dashboard?.project_risks.length ? (
           dashboard.project_risks.map((risk) => (
             <article key={risk.project.id} className="list-row list-row--surface">
               <div>
@@ -68,8 +70,8 @@ export function RisksPage() {
             </article>
           ))
         ) : null}
-        {!isLoading && !dashboard?.project_risks.length ? (
-          <p className="empty-state">Критичных рисков по доступным проектам сейчас нет.</p>
+        {!isLoading && !error && dashboard && !dashboard.project_risks.length ? (
+          <StateView state="empty" title="Критичных рисков нет" description="По доступным проектам всё спокойно." />
         ) : null}
       </section>
     </div>
