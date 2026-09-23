@@ -5,15 +5,16 @@ import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { CustomerTeamMember } from '@shared/types/dashboard';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
+import { StateView } from '@shared/ui';
 
 export function TeamPage() {
-  const { value, error } = useAsyncValue(() => customerPortalService.getTeam(), []);
+  const { value, error, isLoading } = useAsyncValue(() => customerPortalService.getTeam(), []);
   const [selectedMember, setSelectedMember] = useState<CustomerTeamMember | null>(null);
   const roleMap = useMemo(
     () => new Map((value?.available_roles ?? []).map((role) => [role.slug, role.name])),
     [value?.available_roles]
   );
-  const { value: memberDetails } = useAsyncValue(
+  const { value: memberDetails, error: memberError, isLoading: memberLoading } = useAsyncValue(
     () => (selectedMember ? customerPortalService.getTeamMember(selectedMember.id) : Promise.resolve(null)),
     [selectedMember?.id]
   );
@@ -24,18 +25,20 @@ export function TeamPage() {
     }
   }, [selectedMember, value?.members]);
 
-  const detail = memberDetails ?? selectedMember;
+  const detail = !memberLoading && !memberError && memberDetails?.id === selectedMember?.id ? memberDetails : null;
 
   return (
     <div className="page-stack">
       <SectionHeading
-        eyebrow="Team"
-        title="Команда заказчика"
+        eyebrow="Команда"
+        title="Участники организации"
         description="Состав участников организации, роли, проектный доступ и история последних изменений по доступам."
       />
 
-      {error ? <div className="form-error">{error}</div> : null}
+      {isLoading ? <StateView state="loading" title="Загружаем команду" /> : null}
+      {!isLoading && error ? <StateView state="error" description={error} /> : null}
 
+      {!isLoading && !error && value ? <>
       <section className="dual-columns">
         <article className="plain-panel">
           <div className="panel-head">
@@ -45,7 +48,7 @@ export function TeamPage() {
           <div className="list-stack">
             {value?.members.length ? (
               value.members.map((member) => (
-                <button key={member.id} type="button" className="list-row" onClick={() => setSelectedMember(member)}>
+                <button key={member.id} type="button" className="ui-button ui-button--ghost list-row list-row--surface" aria-pressed={selectedMember?.id === member.id} onClick={() => setSelectedMember(member)}>
                   <div>
                     <strong>{member.name}</strong>
                     <p>{member.email}</p>
@@ -66,7 +69,9 @@ export function TeamPage() {
           <div className="panel-head">
             <h3>Карточка участника</h3>
           </div>
-          {detail ? (
+          {memberLoading && selectedMember ? <StateView state="loading" title="Загружаем карточку участника" /> : null}
+          {!memberLoading && memberError ? <StateView state="error" description={memberError} /> : null}
+          {!memberLoading && !memberError && detail ? (
             <div className="profile-list">
               <div>
                 <span>Имя</span>
@@ -105,9 +110,9 @@ export function TeamPage() {
                 <strong>{detail.available_project_count}</strong>
               </div>
             </div>
-          ) : (
+          ) : !memberLoading && !memberError ? (
             <p className="empty-state">Выберите участника, чтобы посмотреть доступы и историю изменений.</p>
-          )}
+          ) : null}
         </article>
       </section>
 
@@ -132,9 +137,9 @@ export function TeamPage() {
               ) : (
                 <p className="empty-state">Проекты пока не назначены.</p>
               )
-            ) : (
+            ) : !memberLoading && !memberError ? (
               <p className="empty-state">Выберите участника слева.</p>
-            )}
+            ) : null}
           </div>
         </article>
 
@@ -153,9 +158,9 @@ export function TeamPage() {
                   <span>{item.created_at ? new Date(item.created_at).toLocaleString('ru-RU') : 'Без даты'}</span>
                 </div>
               ))
-            ) : (
+            ) : !memberLoading && !memberError ? (
               <p className="empty-state">История изменений доступа пока пустая.</p>
-            )}
+            ) : null}
           </div>
         </article>
       </section>
@@ -180,6 +185,7 @@ export function TeamPage() {
           )}
         </div>
       </section>
+      </> : null}
     </div>
   );
 }

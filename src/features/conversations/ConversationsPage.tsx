@@ -2,11 +2,12 @@ import { customerPortalService } from '@shared/api/customerPortalService';
 import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
+import { StateView } from '@shared/ui';
 
 export const CONVERSATIONS_EMPTY_TEXT = 'По доступным проектам пока нет активных сообщений.';
 
 export function ConversationsPage() {
-  const { value: conversations, error } = useAsyncValue(
+  const { value: conversations, error, isLoading } = useAsyncValue(
     () => customerPortalService.getConversations(),
     []
   );
@@ -14,13 +15,14 @@ export function ConversationsPage() {
   return (
     <div className="page-stack">
       <SectionHeading
-        eyebrow="Conversations"
+        eyebrow="Сообщения"
         title="Проектные коммуникации"
         description="Здесь собраны сообщения и обсуждения по проектам, доступным вашей организации."
       />
       <section className="list-surface">
-        {error ? <div className="form-error">{error}</div> : null}
-        {conversations?.length ? (
+        {isLoading ? <StateView state="loading" title="Загружаем сообщения" /> : null}
+        {!isLoading && error ? <StateView state="error" description={error} /> : null}
+        {!isLoading && !error && conversations?.length ? (
           conversations.map((item) => (
             <article key={item.id} className="list-row list-row--surface">
               <div>
@@ -35,9 +37,10 @@ export function ConversationsPage() {
               </div>
             </article>
           ))
-        ) : (
-          <p className="empty-state">{CONVERSATIONS_EMPTY_TEXT}</p>
-        )}
+        ) : null}
+        {!isLoading && !error && !conversations?.length ? (
+          <StateView state="empty" title="Сообщений пока нет" description={CONVERSATIONS_EMPTY_TEXT} />
+        ) : null}
       </section>
     </div>
   );

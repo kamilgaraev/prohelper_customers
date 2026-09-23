@@ -6,6 +6,7 @@ import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { CustomerHandoverScope } from '@shared/types/dashboard';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
+import { StateView } from '@shared/ui';
 
 const statusLabels: Record<string, string> = {
   planned: 'Запланирована',
@@ -52,10 +53,16 @@ export function HandoverPage() {
     [searchParams]
   );
   const [refreshToken, setRefreshToken] = useState(0);
-  const { value: scopes, error } = useAsyncValue(
+  const { value: scopes, error, isLoading } = useAsyncValue(
     () => customerPortalService.getHandoverScopes(filters),
     [searchParams.toString(), refreshToken]
   );
+  const queryKey = `${searchParams.get('project_id') ?? ''}:${refreshToken}`;
+  const [settledQueryKey, setSettledQueryKey] = useState(queryKey);
+  useEffect(() => {
+    if (!isLoading && (error || scopes !== null)) setSettledQueryKey(queryKey);
+  }, [error, isLoading, queryKey, scopes]);
+  const contextLoading = isLoading || settledQueryKey !== queryKey;
   const [selectedScope, setSelectedScope] = useState<CustomerHandoverScope | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
@@ -134,13 +141,14 @@ export function HandoverPage() {
   return (
     <div className="page-stack">
       <SectionHeading
-        eyebrow="Handover"
+        eyebrow="Приёмка"
         title="Приемка зон"
         description="Контроль зон, замечаний и комплекта документов перед передачей заказчику."
       />
 
-      {error ? <div className="form-error">{error}</div> : null}
-      {actionError ? <div className="form-error">{actionError}</div> : null}
+      {contextLoading ? <StateView state="loading" title="Загружаем зоны приемки" /> : null}
+      {!contextLoading && error ? <StateView state="error" description={error} /> : null}
+      {actionError ? <div className="form-error" role="alert">{actionError}</div> : null}
 
       <section className="plain-panel">
         <div className="panel-head">
@@ -169,15 +177,16 @@ export function HandoverPage() {
         <article className="plain-panel">
           <div className="panel-head">
             <h3>Зоны</h3>
-            <span>{scopeOptions.length}</span>
+            <span>{contextLoading || error ? '—' : scopeOptions.length}</span>
           </div>
           <div className="list-stack">
-            {scopeOptions.length ? (
+            {!contextLoading && !error && scopeOptions.length ? (
               scopeOptions.map((scope) => (
                 <button
                   key={scope.id}
                   type="button"
-                  className="list-row"
+                  className="ui-button ui-button--ghost list-row list-row--surface"
+                  aria-pressed={selectedScope?.id === scope.id}
                   onClick={() => {
                     setSelectedScope(scope);
                     setSearchParams((current) => {
@@ -195,9 +204,7 @@ export function HandoverPage() {
                   <StatusPill tone={statusTone(scope)}>{formatStatus(scope.status)}</StatusPill>
                 </button>
               ))
-            ) : (
-              <p className="empty-state">Зон приемки по выбранным условиям пока нет.</p>
-            )}
+            ) : !contextLoading && !error ? <StateView state="empty" title="Зон приемки нет" description="Проверьте выбор проекта или вернитесь позже." /> : null}
           </div>
         </article>
 
@@ -206,7 +213,7 @@ export function HandoverPage() {
             <h3>{selectedScope?.title ?? 'Детали приемки'}</h3>
             {selectedScope ? <StatusPill tone={statusTone(selectedScope)}>{formatStatus(selectedScope.status)}</StatusPill> : null}
           </div>
-          {selectedScope ? (
+          {!contextLoading && !error && selectedScope ? (
             <>
               <div className="profile-list">
                 <div>
@@ -244,11 +251,12 @@ export function HandoverPage() {
                   />
                 </label>
                 <div className="button-row button-row--compact">
-                  <button type="button" onClick={() => void signHandover()} disabled={!canSignHandover || submittingAction !== null}>
+                  <button type="button" className="primary-button" onClick={() => void signHandover()} disabled={!canSignHandover || submittingAction !== null}>
                     Подтвердить передачу
                   </button>
                   <button
                     type="button"
+                    className="secondary-button"
                     onClick={() => void rejectHandover()}
                     disabled={!canRejectHandover || !rejectReason.trim() || submittingAction !== null}
                   >
@@ -283,9 +291,9 @@ export function HandoverPage() {
                 )) : <p className="empty-state">Комплект передачи еще не опубликован.</p>}
               </div>
             </>
-          ) : (
+          ) : !contextLoading && !error ? (
             <p className="empty-state">Выберите зону, чтобы посмотреть замечания и документы.</p>
-          )}
+          ) : null}
         </article>
       </section>
     </div>

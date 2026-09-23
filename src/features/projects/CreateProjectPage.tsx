@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 
 import { customerPortalService } from '@shared/api/customerPortalService';
 import { usePermissions } from '@shared/contexts/PermissionsContext';
+import { Button, Field, Panel } from '@shared/ui';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 
 interface ProjectFormState {
@@ -64,73 +65,73 @@ export function CreateProjectPage() {
   return (
     <div className="page-stack">
       <SectionHeading
-        eyebrow="Projects"
+        eyebrow="Проекты"
         title="Создание проекта"
         description="Создайте проект в кабинете заказчика и сразу перейдите к приглашению генподрядчика или подрядчика."
       />
 
-      <section className="plain-panel plain-panel--wide">
+      <Panel className="plain-panel plain-panel--wide">
         <form className="inline-form" onSubmit={handleSubmit}>
           <div className="form-grid form-grid--two">
-            <label>
-              <span>Название проекта</span>
+            <Field label="Название проекта" htmlFor="project-name">
               <input
+                id="project-name"
                 value={form.name}
                 onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
                 placeholder="Например, Строительство школы"
                 required
               />
-            </label>
+            </Field>
 
-            <label>
-              <span>Номер договора</span>
+            <Field label="Номер договора" htmlFor="project-contract-number">
               <input
+                id="project-contract-number"
                 value={form.contract_number}
                 onChange={(event) => setForm((current) => ({ ...current, contract_number: event.target.value }))}
                 placeholder="При наличии"
               />
-            </label>
+            </Field>
 
-            <label className="form-grid__wide">
-              <span>Адрес</span>
+            <Field className="form-grid__wide" label="Адрес" htmlFor="project-address">
               <input
+                id="project-address"
                 value={form.address}
                 onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))}
                 placeholder="Город, улица, ориентир"
               />
-            </label>
+            </Field>
 
-            <label className="form-grid__wide">
-              <span>Описание</span>
+            <Field className="form-grid__wide" label="Описание" htmlFor="project-description">
               <textarea
+                id="project-description"
                 value={form.description}
                 onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
                 placeholder="Кратко опишите объект и текущую задачу"
                 rows={4}
               />
-            </label>
+            </Field>
 
-            <label>
-              <span>Дата начала</span>
+            <Field label="Дата начала" htmlFor="project-start-date">
               <input
+                id="project-start-date"
                 type="date"
                 value={form.start_date}
                 onChange={(event) => setForm((current) => ({ ...current, start_date: event.target.value }))}
               />
-            </label>
+            </Field>
 
-            <label>
-              <span>Дата завершения</span>
+            <Field label="Дата завершения" htmlFor="project-end-date">
               <input
+                id="project-end-date"
                 type="date"
                 value={form.end_date}
                 onChange={(event) => setForm((current) => ({ ...current, end_date: event.target.value }))}
               />
-            </label>
+            </Field>
 
-            <label>
-              <span>Бюджет</span>
+            <Field label="Бюджет" htmlFor="project-budget">
               <input
+                id="project-budget"
                 type="number"
                 min="0"
                 step="0.01"
@@ -138,26 +139,25 @@ export function CreateProjectPage() {
                 onChange={(event) => setForm((current) => ({ ...current, budget_amount: event.target.value }))}
                 placeholder="0"
               />
-            </label>
+            </Field>
           </div>
 
-          {error ? <div className="form-error">{error}</div> : null}
+          {error ? <div className="form-error" role="alert">{error}</div> : null}
 
           <div className="button-row">
-            <button type="submit" disabled={isSubmitting}>
+            <Button variant="primary" type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Создаем проект...' : 'Создать проект'}
-            </button>
-            <button
-              type="button"
-              className="ghost-button"
+            </Button>
+            <Button
+              variant="ghost"
               onClick={() => navigate('/dashboard/projects')}
               disabled={isSubmitting}
             >
               Отмена
-            </button>
+            </Button>
           </div>
         </form>
-      </section>
+      </Panel>
     </div>
   );
 }

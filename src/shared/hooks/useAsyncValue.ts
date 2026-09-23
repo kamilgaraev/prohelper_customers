@@ -1,14 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 
 export function useAsyncValue<T>(loader: () => Promise<T>, deps: unknown[] = []) {
   const [value, setValue] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     let cancelled = false;
 
     async function run() {
+      setValue(null);
       setIsLoading(true);
       setError(null);
 
@@ -36,6 +37,6 @@ export function useAsyncValue<T>(loader: () => Promise<T>, deps: unknown[] = [])
     };
   }, deps);
 
-  return { value, isLoading, error };
+  return { value, isLoading, error, isSuccess: !isLoading && error === null && value !== null };
 }
 

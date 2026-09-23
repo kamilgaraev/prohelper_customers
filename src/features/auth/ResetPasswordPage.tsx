@@ -33,7 +33,7 @@ export function ResetPasswordPage() {
   return (
     <AuthLayout
       title="Новый пароль"
-      description="Задайте новый пароль для кабинета заказчика."
+      description="Задайте новый пароль для рабочего пространства проекта."
       footer={
         <p>
           <Link to="/login">Вернуться ко входу</Link>
@@ -49,8 +49,9 @@ export function ResetPasswordPage() {
           Новый пароль
           <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" />
         </label>
-        {error ? <div className="form-error">{error}</div> : null}
-        <button type="submit" disabled={isSubmitting || !token || !email}>
+        {!token || !email ? <div className="form-error" role="alert">Ссылка для смены пароля неполная. Запросите письмо для восстановления доступа ещё раз.</div> : null}
+        {error ? <div className="form-error" role="alert">{error}</div> : null}
+        <button type="submit" className="primary-button" disabled={isSubmitting || !token || !email}>
           {isSubmitting ? 'Сохраняем...' : 'Сохранить пароль'}
         </button>
       </form>

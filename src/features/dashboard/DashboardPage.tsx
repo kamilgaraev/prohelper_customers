@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { customerPortalService } from '@shared/api/customerPortalService';
 import { usePermissions } from '@shared/contexts/PermissionsContext';
 import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { AttentionFeedItem } from '@shared/types/dashboard';
+import { StateView } from '@shared/ui';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
 
@@ -77,7 +79,7 @@ function renderAttentionGroup(
             );
           })
         ) : (
-          <p className="empty-state">{emptyText}</p>
+          <StateView state="empty" description={emptyText} />
         )}
       </div>
     </article>
@@ -87,31 +89,51 @@ function renderAttentionGroup(
 export function DashboardPage() {
   const { canAccess } = usePermissions();
   const canViewFinance = canAccess({ permission: 'customer.finance.view' });
-  const { value: dashboard, isLoading, error } = useAsyncValue(() => customerPortalService.getDashboard(), []);
+  const [refresh, setRefresh] = useState(0);
+  const { value: dashboard, isLoading, error } = useAsyncValue(() => customerPortalService.getDashboard(), [refresh]);
+
+  if (isLoading) {
+    return (
+      <div className="page-stack">
+        <SectionHeading eyebrow="Обзор" title="Требует внимания" description="Загружаем сводку по доступным проектам." />
+        <StateView state="loading" title="Загружаем сводку" description="Собираем данные по доступным проектам." />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="page-stack">
+        <SectionHeading eyebrow="Обзор" title="Не удалось загрузить сводку" description="Проверьте соединение и попробуйте ещё раз." />
+        <StateView state="error" description="Проверьте соединение и попробуйте ещё раз." onRetry={() => setRefresh((value) => value + 1)} />
+      </div>
+    );
+  }
+
+  if (!dashboard) {
+    return (
+      <div className="page-stack">
+        <SectionHeading eyebrow="Обзор" title="Сводка пока недоступна" description="Вернитесь позже или откройте нужный раздел кабинета." />
+        <StateView state="empty" description="Нет данных для отображения." />
+      </div>
+    );
+  }
 
   return (
     <div className="page-stack">
       <SectionHeading
-        eyebrow="Overview"
+        eyebrow="Обзор"
         title="Требует внимания"
-        description="Главный рабочий экран заказчика: очереди действий, риски, деньги и последние изменения по доступным проектам."
+        description="Рабочая сводка участника проекта: задачи, риски, финансы и последние изменения по доступным проектам."
       />
 
-      {error ? <div className="form-error">{error}</div> : null}
-
       <section className="metrics-grid">
-        {(isLoading ? new Array(4).fill(null) : dashboard?.metrics ?? []).map((item, index) => (
-          <article key={item ? item.label : index} className="metric-tile">
-            {item ? (
-              <>
-                <StatusPill tone={item.tone}>{item.label}</StatusPill>
-                <strong>{item.value}</strong>
-              </>
-            ) : (
-              <div className="metric-placeholder" />
-            )}
+        {dashboard.metrics.length ? dashboard.metrics.map((item) => (
+          <article key={item.label} className="metric-tile">
+            <StatusPill tone={item.tone}>{item.label}</StatusPill>
+            <strong>{item.value}</strong>
           </article>
-        ))}
+        )) : <StateView state="empty" description="Сводные показатели пока не сформированы." />}
       </section>
 
       <section className="plain-panel">
@@ -123,7 +145,7 @@ export function DashboardPage() {
           <div>
             <span>Ответ по замечаниям</span>
             <strong>
-              {dashboard?.discipline_summary.issue_response_hours !== null && dashboard?.discipline_summary.issue_response_hours !== undefined
+              {dashboard.discipline_summary.issue_response_hours !== null && dashboard.discipline_summary.issue_response_hours !== undefined
                 ? `${dashboard.discipline_summary.issue_response_hours} ч`
                 : '—'}
             </strong>
@@ -131,18 +153,18 @@ export function DashboardPage() {
           <div>
             <span>Ответ по запросам</span>
             <strong>
-              {dashboard?.discipline_summary.request_response_hours !== null && dashboard?.discipline_summary.request_response_hours !== undefined
+              {dashboard.discipline_summary.request_response_hours !== null && dashboard.discipline_summary.request_response_hours !== undefined
                 ? `${dashboard.discipline_summary.request_response_hours} ч`
                 : '—'}
             </strong>
           </div>
           <div>
             <span>Просроченные действия</span>
-            <strong>{dashboard?.discipline_summary.overdue_actions_count ?? '—'}</strong>
+            <strong>{dashboard.discipline_summary.overdue_actions_count ?? '—'}</strong>
           </div>
           <div>
             <span>Возвраты на доработку</span>
-            <strong>{dashboard?.discipline_summary.rework_count ?? '—'}</strong>
+            <strong>{dashboard.discipline_summary.rework_count ?? '—'}</strong>
           </div>
         </div>
       </section>
@@ -150,19 +172,19 @@ export function DashboardPage() {
       <section className="dual-columns">
         {renderAttentionGroup(
           'Новые договоры',
-          dashboard?.attention_feed.contracts ?? [],
+          dashboard.attention_feed.contracts,
           'Новых договоров, требующих внимания, сейчас нет.',
           '/dashboard/contracts'
         )}
         {renderAttentionGroup(
           'Ожидают решения',
-          dashboard?.attention_feed.approvals ?? [],
+          dashboard.attention_feed.approvals,
           'Открытых актов на согласовании сейчас нет.',
           '/dashboard/approvals'
         )}
       </section>
 
-      {canViewFinance && dashboard?.finance_summary ? (
+      {canViewFinance && dashboard.finance_summary ? (
         <section className="plain-panel">
           <div className="panel-head">
             <h3>Финансовая сводка</h3>
@@ -196,7 +218,7 @@ export function DashboardPage() {
             <Link to="/dashboard/risks">Все риски</Link>
           </div>
           <div className="list-stack">
-            {dashboard?.project_risks.length ? (
+            {dashboard.project_risks.length ? (
               dashboard.project_risks.map((risk) => (
                 <div key={risk.project.id} className="list-row">
                   <div>
@@ -212,7 +234,7 @@ export function DashboardPage() {
                 </div>
               ))
             ) : (
-              <p className="empty-state">Критичных рисков по доступным проектам сейчас нет.</p>
+              <StateView state="empty" description="Критичных рисков по доступным проектам сейчас нет." />
             )}
           </div>
         </article>
@@ -222,7 +244,7 @@ export function DashboardPage() {
             <h3>Последние изменения</h3>
           </div>
           <div className="list-stack">
-            {dashboard?.recent_changes.length ? (
+            {dashboard.recent_changes.length ? (
               dashboard.recent_changes.map((item) => (
                 <div key={`${item.type}-${item.id}`} className="list-row">
                   <div>
@@ -235,7 +257,7 @@ export function DashboardPage() {
                 </div>
               ))
             ) : (
-              <p className="empty-state">Новых изменений по проектам пока нет.</p>
+              <StateView state="empty" description="Новых изменений по проектам пока нет." />
             )}
           </div>
         </article>
@@ -244,13 +266,13 @@ export function DashboardPage() {
       <section className="dual-columns">
         {renderAttentionGroup(
           'Замечания',
-          dashboard?.attention_feed.issues ?? [],
+          dashboard.attention_feed.issues,
           'Открытых замечаний сейчас нет.',
           '/dashboard/issues'
         )}
         {renderAttentionGroup(
           'Запросы заказчика',
-          dashboard?.attention_feed.requests ?? [],
+          dashboard.attention_feed.requests,
           'Активных запросов сейчас нет.',
           '/dashboard/requests'
         )}

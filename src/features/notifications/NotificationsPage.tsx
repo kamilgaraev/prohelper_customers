@@ -7,8 +7,9 @@ import { useAsyncValue } from '@shared/hooks/useAsyncValue';
 import { NotificationSettings } from '@shared/types/dashboard';
 import { SectionHeading } from '@shared/ui/SectionHeading';
 import { StatusPill } from '@shared/ui/StatusPill';
+import { StateView } from '@shared/ui';
 
-function resolveEntityLink(type?: string | null, id?: number | null): string | null {
+function resolveEntityLink(type?: string | null, id?: number | null, projectId?: number | null): string | null {
   if (!type || !id) {
     return null;
   }
@@ -20,6 +21,8 @@ function resolveEntityLink(type?: string | null, id?: number | null): string | n
       return `/dashboard/issues?selected=${id}`;
     case 'request':
       return `/dashboard/requests?selected=${id}`;
+    case 'rfi':
+      return projectId ? `/dashboard/rfi?project_id=${projectId}&id=${id}` : `/dashboard/rfi?id=${id}`;
     default:
       return null;
   }
@@ -31,13 +34,20 @@ export function NotificationsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const unreadOnly = searchParams.get('unread') === 'true';
   const eventType = searchParams.get('event_type') || '';
-  const { value: notificationsResponse, error } = useAsyncValue(
+  const { value: notificationsResponse, error, isLoading } = useAsyncValue(
     () => customerPortalService.getNotifications({ unread: unreadOnly || undefined, event_type: eventType || undefined }),
     [searchParams.toString()]
   );
-  const { value: settings } = useAsyncValue(() => customerPortalService.getNotificationSettings(), []);
+  const queryKey = searchParams.toString();
+  const [settledQueryKey, setSettledQueryKey] = useState(queryKey);
+  useEffect(() => {
+    if (!isLoading && (error || notificationsResponse !== null)) setSettledQueryKey(queryKey);
+  }, [error, isLoading, notificationsResponse, queryKey]);
+  const contextLoading = isLoading || settledQueryKey !== queryKey;
+  const { value: settings, error: settingsError, isLoading: settingsLoading } = useAsyncValue(() => customerPortalService.getNotificationSettings(), []);
   const [draft, setDraft] = useState<NotificationSettings | null>(null);
   const [saving, setSaving] = useState(false);
+  const [settingsActionError, setSettingsActionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (settings) {
@@ -57,8 +67,17 @@ export function NotificationsPage() {
     access_updated: 'Изменен доступ пользователя',
     finance_risk_detected: 'Появился финансовый риск',
   };
+  const rfiEventLabels = {
+    'change_management.rfi.sent': 'Отправлен вопрос по проекту',
+    'change_management.rfi.answered': 'Получен ответ по вопросу проекта',
+    'change_management.rfi.clarification_requested': 'Запрошено уточнение по вопросу проекта',
+    'change_management.rfi.accepted': 'Ответ по вопросу проекта принят',
+    'change_management.rfi.closed': 'Вопрос по проекту закрыт',
+    'change_management.rfi.reassigned': 'Изменён адресат вопроса по проекту',
+  } satisfies Record<string, string>;
+  const allEventLabels: Record<string, string> = { ...eventLabels, ...rfiEventLabels };
 
-  const availableEventTypes = useMemo(() => Object.keys(eventLabels), []);
+  const availableEventTypes = useMemo(() => Object.keys(allEventLabels), []);
 
   const handleToggle = async (key: keyof NotificationSettings['events']) => {
     if (!draft) {
@@ -73,7 +92,9 @@ export function NotificationsPage() {
       },
     };
 
+    const previous = draft;
     setDraft(next);
+    setSettingsActionError(null);
 
     if (!canManageSettings) {
       return;
@@ -84,6 +105,9 @@ export function NotificationsPage() {
     try {
       const saved = await customerPortalService.updateNotificationSettings(next);
       setDraft(saved);
+    } catch (saveError) {
+      setDraft(previous);
+      setSettingsActionError(saveError instanceof Error ? saveError.message : 'Не удалось сохранить настройки.');
     } finally {
       setSaving(false);
     }
@@ -92,7 +116,7 @@ export function NotificationsPage() {
   return (
     <div className="page-stack">
       <SectionHeading
-        eyebrow="Notifications"
+        eyebrow="Уведомления"
         title="События и уведомления"
         description="Центр сигналов по проектам: важные изменения, риски, новые документы, запросы и персональные настройки каналов."
       />
@@ -100,7 +124,7 @@ export function NotificationsPage() {
       <section className="plain-panel">
         <div className="panel-head">
           <h3>Фильтры ленты</h3>
-          <span>{notificationsResponse?.meta.total ?? 0}</span>
+          <span>{contextLoading || error ? '—' : notificationsResponse?.meta.total ?? 0}</span>
         </div>
         <div className="profile-list">
           <label>
@@ -136,19 +160,22 @@ export function NotificationsPage() {
               <option value="">Все события</option>
               {availableEventTypes.map((key) => (
                 <option key={key} value={key}>
-                  {eventLabels[key as keyof NotificationSettings['events']]}
+                  {allEventLabels[key]}
                 </option>
               ))}
             </select>
           </label>
           <div>
             <span>Непрочитанные</span>
-            <strong>{notificationsResponse?.meta.unread_count ?? '—'}</strong>
+            <strong>{contextLoading || error ? '—' : notificationsResponse?.meta.unread_count ?? '—'}</strong>
           </div>
         </div>
       </section>
 
-      {draft ? (
+        {settingsLoading ? <StateView state="loading" title="Загружаем настройки уведомлений" /> : null}
+        {!settingsLoading && settingsError ? <StateView state="error" description={settingsError} /> : null}
+        {settingsActionError ? <StateView state="error" description={settingsActionError} /> : null}
+        {!settingsLoading && !settingsError && draft ? (
         <section className="plain-panel">
           <div className="panel-head">
             <h3>Настройки уведомлений</h3>
@@ -161,7 +188,7 @@ export function NotificationsPage() {
                 <input
                   type="checkbox"
                   checked={value}
-                  disabled={!canManageSettings}
+                  disabled={!canManageSettings || saving}
                   onChange={() => void handleToggle(key as keyof NotificationSettings['events'])}
                 />
               </label>
@@ -171,10 +198,11 @@ export function NotificationsPage() {
       ) : null}
 
       <section className="list-surface">
-        {error ? <div className="form-error">{error}</div> : null}
-        {notificationsResponse?.items.length ? (
+        {contextLoading ? <StateView state="loading" title="Загружаем уведомления" /> : null}
+        {!contextLoading && error ? <StateView state="error" description={error} /> : null}
+        {!contextLoading && !error && notificationsResponse?.items.length ? (
           notificationsResponse.items.map((item) => {
-            const entityLink = resolveEntityLink(item.related_entity?.type, item.related_entity?.id);
+            const entityLink = resolveEntityLink(item.related_entity?.type, item.related_entity?.id, item.project?.id);
 
             return (
               <article key={item.id} className="list-row list-row--surface">
@@ -183,7 +211,7 @@ export function NotificationsPage() {
                   <p>{item.description}</p>
                   <p>
                     {item.project ? `Проект: ${item.project.name}` : 'Событие по кабинету'}
-                    {item.eventType ? ` • ${eventLabels[item.eventType as keyof NotificationSettings['events']] ?? item.eventType}` : ''}
+                    {item.eventType ? ` • ${allEventLabels[item.eventType] ?? item.eventType}` : ''}
                   </p>
                 </div>
                 <div className="row-actions">
@@ -193,9 +221,10 @@ export function NotificationsPage() {
               </article>
             );
           })
-        ) : (
-          <p className="empty-state">Уведомлений по выбранным условиям пока нет.</p>
-        )}
+        ) : null}
+        {!contextLoading && !error && !notificationsResponse?.items.length ? (
+          <StateView state="empty" title="Уведомлений нет" description="По выбранным условиям события не найдены." />
+        ) : null}
       </section>
     </div>
   );

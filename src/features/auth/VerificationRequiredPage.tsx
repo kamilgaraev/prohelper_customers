@@ -34,7 +34,7 @@ export function VerificationRequiredPage() {
   return (
     <AuthLayout
       title="Подтвердите email"
-      description="Без подтверждения email кабинет заказчика останется закрытым."
+      description="Подтвердите email, чтобы открыть рабочее пространство проекта."
       footer={
         <p>
           <Link to="/login">Вернуться ко входу</Link>
@@ -46,8 +46,8 @@ export function VerificationRequiredPage() {
           Мы отправили письмо на <strong>{pendingVerification?.email ?? 'ваш email'}</strong>.
         </div>
         {message ? <div className="form-success">{message}</div> : null}
-        {error ? <div className="form-error">{error}</div> : null}
-        <button type="button" onClick={handleResend} disabled={isSubmitting}>
+        {error ? <div className="form-error" role="alert">{error}</div> : null}
+        <button type="button" className="primary-button" onClick={handleResend} disabled={isSubmitting}>
           {isSubmitting ? 'Отправляем...' : 'Отправить письмо повторно'}
         </button>
       </div>

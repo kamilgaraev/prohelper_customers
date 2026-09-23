@@ -41,7 +41,7 @@ export function LoginPage() {
 
   return (
     <AuthLayout
-      title="Кабинет заказчика МОСТ"
+      title="Кабинет участника МОСТ"
       description="Контролируйте проекты, документы, согласования и ключевые события в одном рабочем пространстве."
       footer={
         <p>
@@ -68,8 +68,8 @@ export function LoginPage() {
             placeholder="Введите пароль"
           />
         </label>
-        {error ? <div className="form-error">{error}</div> : null}
-        <button type="submit" disabled={isLoading}>
+        {error ? <div className="form-error" role="alert">{error}</div> : null}
+        <button type="submit" className="primary-button" disabled={isLoading}>
           {isLoading ? 'Входим...' : 'Открыть кабинет'}
         </button>
         <Link to="/forgot-password">Забыли пароль?</Link>

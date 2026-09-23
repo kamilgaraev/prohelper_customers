@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 
 interface AuthLayoutProps {
   title: string;
@@ -8,6 +8,22 @@ interface AuthLayoutProps {
 }
 
 export function AuthLayout({ title, description, children, footer }: AuthLayoutProps) {
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const applySystemTheme = (event?: MediaQueryListEvent) => {
+      document.documentElement.dataset.theme = (event?.matches ?? media.matches) ? 'dark' : 'light';
+    };
+
+    applySystemTheme();
+    media.addEventListener('change', applySystemTheme);
+
+    return () => {
+      media.removeEventListener('change', applySystemTheme);
+      const savedTheme = window.localStorage.getItem('customer-theme');
+      document.documentElement.dataset.theme = savedTheme === 'dark' ? 'dark' : 'light';
+    };
+  }, []);
+
   return (
     <div className="auth-shell">
       <div className="auth-poster">

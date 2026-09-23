@@ -21,7 +21,7 @@ export function RegisterPage() {
       await register({ name, companyName, email, password });
       navigate('/verification-required', { replace: true });
     } catch (registerError) {
-      setError(registerError instanceof Error ? registerError.message : 'Не удалось создать кабинет заказчика.');
+      setError(registerError instanceof Error ? registerError.message : 'Не удалось создать кабинет участника.');
     }
   }
 
@@ -35,7 +35,7 @@ export function RegisterPage() {
 
   return (
     <AuthLayout
-      title="Регистрация кабинета заказчика"
+      title="Регистрация участника проекта"
       description="Создайте защищенный кабинет и подключите рабочее пространство для проектов, документов и согласований."
       footer={
         <p>
@@ -68,8 +68,8 @@ export function RegisterPage() {
             type="password"
           />
         </label>
-        {error ? <div className="form-error">{error}</div> : null}
-        <button type="submit" disabled={isLoading}>
+        {error ? <div className="form-error" role="alert">{error}</div> : null}
+        <button type="submit" className="primary-button" disabled={isLoading}>
           {isLoading ? 'Создаем...' : 'Создать кабинет'}
         </button>
       </form>
