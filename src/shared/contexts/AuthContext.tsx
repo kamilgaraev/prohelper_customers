@@ -1,7 +1,7 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 
 import { authService } from '@shared/api/authService';
-import { getPendingVerification } from '@shared/api/storage';
+import { clearPendingVerification, getPendingVerification } from '@shared/api/storage';
 import {
   AuthSession,
   AuthSessionStatus,
@@ -135,10 +135,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         try {
           await authService.logout();
+        } finally {
+          clearPendingVerification();
           setToken(null);
           setUser(null);
-          setStatus(pendingVerification ? 'pending_verification' : 'guest');
-        } finally {
+          setPendingVerification(null);
+          setStatus('guest');
           setIsLoading(false);
         }
       },

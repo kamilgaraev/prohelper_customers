@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 
 import { AuthLayout } from '@features/auth/AuthLayout';
 import { resolveApiMessage } from '@shared/api/apiHelpers';
@@ -7,7 +7,8 @@ import { authService } from '@shared/api/authService';
 import { useAuth } from '@shared/contexts/AuthContext';
 
 export function VerificationRequiredPage() {
-  const { isAuthenticated, pendingVerification, status } = useAuth();
+  const navigate = useNavigate();
+  const { isAuthenticated, isLoading, logout, pendingVerification, status } = useAuth();
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,6 +28,11 @@ export function VerificationRequiredPage() {
     }
   }
 
+  async function handleReturnToLogin() {
+    await logout().catch(() => undefined);
+    navigate('/login', { replace: true });
+  }
+
   if (isAuthenticated && status !== 'pending_verification') {
     return <Navigate to="/dashboard" replace />;
   }
@@ -37,7 +43,9 @@ export function VerificationRequiredPage() {
       description="Подтвердите email, чтобы открыть рабочее пространство проекта."
       footer={
         <p>
-          <Link to="/login">Вернуться ко входу</Link>
+          <button className="auth-text-button" type="button" onClick={handleReturnToLogin} disabled={isLoading}>
+            Вернуться ко входу
+          </button>
         </p>
       }
     >
