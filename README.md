@@ -1,25 +1,7 @@
-# prohelper_customers
+# prohelper_customers — deprecated
 
-Customer portal for МОСТ.
+Отдельный frontend кабинета заказчика МОСТ архивирован 25 сентября 2026 года. Не запускать локально, не собирать, не развёртывать и не использовать в новых сценариях. Разработка сценариев заказчика продолжается в `prohelper_admin` с серверной проверкой прав на проект.
 
-## Scripts
+Исходный код и Git-история сохранены для миграции существующих сценариев. Backend `/api/v1/customer` и письма со ссылками на старый адрес остаются совместимыми до отдельного переноса приглашений, подтверждения почты и восстановления пароля. Простая замена адреса на админку сломает эти ссылки: соответствующих публичных маршрутов в админке пока нет.
 
-- `npm install`
-- `npm run dev`
-- `npm run build`
-- `npm run lint`
-- `npm run test:run`
-- `npx tsc --noEmit`
-
-## GitHub Actions deploy
-
-Workflow: `.github/workflows/deploy.yml`
-
-Required repository secrets:
-
-- `DEPLOY_HOST`
-- `DEPLOY_SSH_KEY`
-- `DEPLOY_PATH`
-- `DEPLOY_POST_COMMAND`
-
-SSH user is fixed to `root`, and SSH port is fixed to `22` in the workflow.
+В этой task-ветке автоматическое развёртывание заменено безопасным уведомлением. До выпуска изменения workflow на `main` остаётся прежним. Для восстановления старого приложения потребуется отдельное решение и проверка актуальных маршрутов авторизации.
